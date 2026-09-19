@@ -1,0 +1,73 @@
+                    PROYECTO
+                       │
+                       ▼
+                 1. MVP escrito
+                       │
+                       ▼
+               2. Android Studio
+                       │
+                       ▼
+                3. Kotlin/Compose
+                       │
+                       ▼
+                  4. Room
+                       │
+                       ▼
+                5. Importar foto
+                       │
+                       ▼
+                  6. ML Kit
+                       │
+                       ▼
+                   7. Parser
+                       │
+                       ▼
+              8. Guardar tickets
+                       │
+                       ▼
+             9. Extraer productos
+                       │
+                       ▼
+              10. Revisar/corregir
+                       │
+                       ▼
+                11. Categorías
+                       │
+                       ▼
+                  12. IA
+                       │
+                       ▼
+                 13. Dashboard
+                       │
+                       ▼
+              14. Mejoras avanzadas
+
+
+1. Minimum Viable Product
+Extract plain text from a shopping receipt image, analyze it, and structure the relevant data.
+
+Input:
+- Una imagen de un ticket.
+Process:
+1. OCR → extraer texto.
+2. Analizar el texto.
+3. Identificar los datos relevantes.
+4. Convertirlos a una estructura consistente.
+Output:
+{
+  "store": "Mercadona",
+  "date": "2026-09-15",
+  "total": 25.15,
+  "items": [
+    {
+      "name": "Pechuga de pollo",
+      "price": 5.42
+    },
+    {
+      "name": "Arroz",
+      "price": 1.89
+    }
+  ]
+}
+
+Given a receipt image, the application should produce structured data containing the store, date, total amount, and purchased items with their prices.

@@ -1,0 +1,454 @@
+EASY RECEIPT ANALYZER - GUIA DE APRENDIZAJE
+============================================
+
+Este documento registra lo construido hasta ahora y el motivo de cada paso.
+La hoja de ruta general y la definicion del MVP se conservan en:
+Proyecto_easy_receipt_analyzer.txt
+
+OBJETIVO DEL PROYECTO
+---------------------
+Crear una aplicacion Android que ayude a controlar gastos a partir de tickets
+de supermercado. El problema que quiere resolver es que los tickets pequenos
+son incomodos de guardar y analizar manualmente.
+
+El MVP futuro recibira una imagen de un ticket, extraera su texto con OCR,
+interpretara los datos y guardara, como minimo, tienda, fecha, total y
+productos.
+
+ESTADO ACTUAL
+-------------
+Estamos en la fase inicial de interfaz con Kotlin y Jetpack Compose.
+Todavia NO se ha implementado:
+
+- Camara ni seleccion real de imagenes.
+- OCR o ML Kit.
+- Base de datos Room.
+- Analisis de productos o gastos.
+- Conexion a una API de IA.
+
+1. CREACION DEL PROYECTO
+------------------------
+El proyecto se creo en Android Studio usando la plantilla Empty Activity.
+
+Por que Empty Activity:
+- Incluye una Activity inicial, Gradle y una configuracion funcional.
+- Activa Jetpack Compose para crear la interfaz con Kotlin.
+- Evita configurar un proyecto completamente vacio desde cero.
+
+Por que no se anadio Gemini API:
+- No es necesaria para el primer MVP.
+- Primero se implementara el flujo local: imagen -> OCR -> texto -> parser.
+- La IA se evaluara mas adelante, solo si aporta valor para tickets dificiles.
+
+2. IDENTIDAD DEL PROYECTO
+-------------------------
+Se eligio un unico concepto para no mezclar nombres:
+
+- Nombre visible en el movil: Easy Receipt Analyzer
+- Nombre tecnico del proyecto: EasyReceiptAnalyzer
+- Carpeta del proyecto: EasyReceiptAnalyzer
+- Paquete de Android: com.easyreceiptanalyzer
+
+La carpeta del proyecto es:
+C:\Users\jbden\AndroidStudioProjects\EasyReceiptAnalyzer
+
+El paquete es el identificador interno unico de la aplicacion. La carpeta
+generica original "com.example..." se sustituyo por:
+
+app/src/main/java/com/easyreceiptanalyzer/
+
+3. ARCHIVOS PRINCIPALES
+-----------------------
+
+EasyReceiptAnalyzer/
+|
+|-- settings.gradle.kts
+|   Define el nombre del proyecto e incluye el modulo :app.
+|
+|-- build.gradle.kts
+|   Configuracion general de Gradle.
+|
+|-- gradle/libs.versions.toml
+|   Centraliza versiones de Kotlin, Compose y bibliotecas.
+|
+|-- app/
+    |
+    |-- build.gradle.kts
+    |   Configuracion especifica de la aplicacion Android.
+    |
+    |-- src/main/AndroidManifest.xml
+    |   Declara la aplicacion y la Activity principal.
+    |
+    |-- src/main/java/com/easyreceiptanalyzer/MainActivity.kt
+    |   Punto de entrada y pantallas actuales.
+    |
+    |-- src/main/java/com/easyreceiptanalyzer/ui/theme/
+    |   Colores, tipografia y tema visual Material 3.
+    |
+    |-- src/main/res/
+        Textos, iconos, temas XML y otros recursos.
+
+4. CONFIGURACION ANDROID ACTUAL
+-------------------------------
+
+- Lenguaje: Kotlin
+- Interfaz: Jetpack Compose con Material 3
+- Namespace y applicationId: com.easyreceiptanalyzer
+- minSdk: 24 (Android 7.0)
+- targetSdk: 37
+- compileSdk: 37
+- Java configurado para compilar: 11
+
+No se han anadido dependencias para Room, ML Kit, camara ni galeria.
+
+5. LA INTERFAZ BASE CREADA
+--------------------------
+El archivo MainActivity.kt ya no muestra el texto de plantilla "Hello Android!".
+Ahora contiene dos pantallas simples:
+
+A. Pantalla de inicio
+
+   Easy Receipt Analyzer
+   Controla tus gastos a partir de tus tickets de compra.
+
+   [ Anadir un ticket ]
+
+B. Pantalla Anadir ticket
+
+   Anadir ticket
+
+   [ Tomar una foto ]
+   [ Elegir de galeria ]
+   [ Volver ]
+
+De momento los botones de foto y galeria se muestran pero no abren nada.
+Esto es intencionado: primero se construye la interfaz y despues se conecta
+con las funciones reales.
+
+6. COMO FUNCIONA EL CAMBIO DE PANTALLA
+--------------------------------------
+
+En MainActivity.kt existe este tipo:
+
+private enum class AppScreen {
+    Home,
+    AddReceipt
+}
+
+Un enum define un conjunto cerrado de opciones. Aqui solo hay dos posibles
+pantallas: Home (inicio) y AddReceipt (anadir ticket).
+
+La app guarda cual se esta mostrando con:
+
+var currentScreen by remember { mutableStateOf(AppScreen.Home) }
+
+- currentScreen contiene la pantalla actual.
+- AppScreen.Home es el valor inicial.
+- mutableStateOf permite que Compose observe los cambios.
+- remember conserva ese valor mientras la Activity siga abierta.
+
+Cuando se pulsa "Anadir un ticket", el boton ejecuta:
+
+currentScreen = AppScreen.AddReceipt
+
+Compose detecta el nuevo valor y vuelve a dibujar la interfaz. Entonces se
+muestra AddReceiptScreen. El boton "Volver" realiza el cambio contrario:
+
+currentScreen = AppScreen.Home
+
+La seleccion de la pantalla se decide con:
+
+when (currentScreen) {
+    AppScreen.Home -> HomeScreen(...)
+    AppScreen.AddReceipt -> AddReceiptScreen(...)
+}
+
+7. PIEZAS DE COMPOSE QUE APARECEN
+---------------------------------
+
+@Composable
+    Marca una funcion que dibuja una parte de la interfaz.
+
+Column
+    Coloca elementos uno debajo de otro.
+
+Text
+    Muestra un texto.
+
+Button y TextButton
+    Crean botones. TextButton es un boton visualmente mas discreto; se usa
+    para "Volver".
+
+Modifier
+    Ajusta el aspecto o comportamiento de un elemento. En este proyecto se
+    usa para ocupar el ancho o alto disponible y aplicar margenes.
+
+Spacer
+    Deja espacio entre elementos. Por ejemplo, 16.dp significa 16 unidades
+    de densidad independiente de pantalla.
+
+Scaffold
+    Proporciona una estructura base de pantalla y deja preparada la app para
+    elementos futuros como barras superiores, avisos o botones flotantes.
+
+@Preview
+    Permite previsualizar una pantalla en Android Studio sin instalar la app.
+    Hay una previsualizacion para la pantalla de inicio y otra para anadir
+    ticket.
+
+8. PROXIMO PASO RECOMENDADO
+---------------------------
+Antes de anadir camara u OCR, conviene ejecutar la app en un emulador o movil
+y comprobar que:
+
+1. Aparece la pantalla de inicio.
+2. El boton "Anadir un ticket" abre la segunda pantalla.
+3. El boton "Volver" regresa al inicio.
+
+Despues, la siguiente fase sera conectar "Elegir de galeria" para obtener una
+imagen real. Mas adelante se podra agregar "Tomar una foto", ML Kit para OCR,
+el parser y Room para guardar los tickets.
+
+REGLA DE TRABAJO
+---------------
+Cada nueva fase se anotara aqui con:
+
+1. Que objetivo tiene.
+2. Que archivos se modifican o se crean.
+3. Que conceptos nuevos se usan.
+4. Como comprobar que funciona.
+5. Que queda pendiente para el siguiente paso.
+
+9. BASE DE DATOS LOCAL: ROOM
+----------------------------
+Se ha preparado Room, la biblioteca recomendada por Android para guardar datos
+estructurados en una base de datos SQLite local. No necesita conexion a
+Internet y los datos permanecen en el movil al cerrar la app.
+
+Room se compone de tres piezas:
+
+1. Entity: representa una tabla de la base de datos.
+2. DAO: contiene las operaciones para consultar o guardar esa tabla.
+3. Database: crea y mantiene la conexion con la base de datos.
+
+Tambien se ha anadido un Repository. Su objetivo es evitar que las pantallas
+hablen directamente con el DAO. Mas adelante sera el punto comun desde el que
+la app guardara y leera tickets.
+
+Archivos creados:
+
+app/src/main/java/com/easyreceiptanalyzer/data/local/ReceiptEntity.kt
+    Define la tabla "receipts". Cada objeto ReceiptEntity sera una fila.
+
+app/src/main/java/com/easyreceiptanalyzer/data/local/ReceiptDao.kt
+    Define las operaciones insert, observeAll y findById.
+
+app/src/main/java/com/easyreceiptanalyzer/data/local/AppDatabase.kt
+    Crea una sola instancia de la base de datos local llamada
+    easy_receipt_analyzer.db.
+
+app/src/main/java/com/easyreceiptanalyzer/data/ReceiptRepository.kt
+    Ofrece una capa sencilla para guardar, obtener y observar tickets.
+
+DATOS DE UN TICKET
+------------------
+Por ahora cada ticket puede almacenar:
+
+- id: identificador unico, creado automaticamente por Room.
+- storeName: nombre de la tienda.
+- purchaseDate: fecha de compra como marca de tiempo; inicialmente puede no
+  conocerse.
+- totalCents: importe total en centimos; se usa Long y no Double para evitar
+  errores de redondeo con dinero.
+- rawText: texto completo obtenido del OCR; inicialmente puede no conocerse.
+- createdAt: momento en que se creo el registro en la app.
+
+La tabla aun no tiene productos. Se agregaran cuando el OCR y el parser puedan
+extraerlos de forma fiable.
+
+DEPENDENCIAS ANADIDAS
+---------------------
+Se incorporaron Room 3.0.3 y KSP. KSP genera el codigo que Room necesita a
+partir de las anotaciones @Entity, @Dao y @Database.
+
+Por ahora la interfaz no cambia y aun no se inserta ningun ticket. El siguiente
+paso sera conectar "Elegir de galeria" para obtener una imagen real; despues
+podremos pasarla al OCR y finalmente crear un ReceiptEntity para guardarlo.
+
+10. GALERIA + HILT + COIL
+--------------------------
+Se ha implementado la funcionalidad de seleccion de imagenes desde la galeria
+utilizando Photo Picker moderno, configurado Hilt para dependency injection,
+y anadido Coil para visualizacion de imagenes en Compose.
+
+OBJETIVO DE ESTA FASE
+---------------------
+- Permitir al usuario seleccionar una imagen de ticket desde la galeria
+- Configurar una arquitectura robusta con Hilt para dependency injection
+- Visualizar la imagen seleccionada en la interfaz
+- Crear pruebas basicas para validar el funcionamiento del Repository
+
+ARCHIVOS MODIFICADOS
+--------------------
+gradle/libs.versions.toml
+  - Añadidas versiones: hilt = "2.57.1", hiltCompose = "1.3.0", coil = "2.7.0"
+  - Añadidas versiones de testing: mockito = "5.8.0", mockitoKotlin = "5.2.1"
+  - Añadida version: coroutinesTest = "1.8.0"
+
+build.gradle.kts (root)
+  - Añadido plugin Hilt: alias(libs.plugins.hilt.android) apply false
+
+app/build.gradle.kts
+  - Añadido plugin Hilt: alias(libs.plugins.hilt.android)
+  - Actualizado Java VERSION_11 a VERSION_17 (requerido por Hilt + Compose)
+  - Añadidas dependencias Hilt: hilt-android, hilt-compiler
+  - Añadida dependencia Hilt Compose: hilt-lifecycle-viewmodel-compose
+  - Añadida dependencia Coil: coil-compose
+  - Añadidas dependencias de testing: mockito-core, mockito-kotlin, kotlinx-coroutines-test
+
+app/src/main/AndroidManifest.xml
+  - Añadido android:name=".EasyReceiptApplication" al tag <application>
+
+app/src/main/java/com/easyreceiptanalyzer/MainActivity.kt
+  - Añadida anotacion @AndroidEntryPoint
+  - Añadidos imports de Photo Picker, Coil, Hilt
+  - Integrado rememberLauncherForActivityResult con PickVisualMedia
+  - Modificado AddReceiptScreen para aceptar AddReceiptViewModel
+  - Añadida visualizacion de imagen con AsyncImage de Coil
+  - Añadido estado de carga con CircularProgressIndicator
+  - Boton "Elegir de galeria" ahora abre Photo Picker
+
+app/src/main/java/com/easyreceiptanalyzer/data/local/AppDatabase.kt
+  - Eliminado companion object y patron singleton (ahora gestionado por Hilt)
+
+ARCHIVOS CREADOS
+---------------
+app/src/main/java/com/easyreceiptanalyzer/EasyReceiptApplication.kt
+  - Clase Application anotada con @HiltAndroidApp
+  - Punto de entrada para Hilt en la aplicacion
+
+app/src/main/java/com/easyreceiptanalyzer/di/DatabaseModule.kt
+  - Modulo Hilt anotado con @Module y @InstallIn(SingletonComponent::class)
+  - Proporciona AppDatabase como singleton
+  - Proporciona ReceiptDao
+  - Proporciona ReceiptRepository
+
+app/src/main/java/com/easyreceiptanalyzer/ui/addreceipt/AddReceiptViewModel.kt
+  - ViewModel anotado con @HiltViewModel
+  - Inyecta ReceiptRepository via Hilt
+  - Estado: selectedImageUri (Uri?) - URI de la imagen seleccionada
+  - Estado: isSaving (Boolean) - indica si se esta guardando
+  - Funcion: selectImage(uri) - actualiza la URI seleccionada
+  - Funcion: saveReceipt(storeName) - guarda ticket en la base de datos
+
+app/src/test/java/com/easyreceiptanalyzer/data/ReceiptRepositoryTest.kt
+  - Pruebas unitarias para ReceiptRepository
+  - Prueba: observeReceipts retorna Flow correcto del DAO
+  - Prueba: saveReceipt llama a DAO insert
+  - Prueba: getReceipt llama a DAO findById
+  - Usa Mockito para mockear ReceiptDao
+  - Usa kotlinx-coroutines-test para test de corutinas
+
+app/src/test/java/com/easyreceiptanalyzer/data/local/ReceiptEntityTest.kt
+  - Pruebas unitarias para ReceiptEntity
+  - Prueba: creacion con todos los campos
+  - Prueba: creacion con campos opcionales null
+  - Prueba: createdAt se establece por defecto al tiempo actual
+  - Prueba: id se establece por defecto a 0
+
+CONCEPTOS NUEVOS
+----------------
+Hilt (Dependency Injection)
+  - Framework de DI para Android basado en Dagger
+  - @HiltAndroidApp: Anotacion en Application class para inicializar Hilt
+  - @AndroidEntryPoint: Anotacion en Activity para habilitar inyeccion
+  - @Module: Clase que define como proporcionar dependencias
+  - @InstallIn: Define el componente Hilt donde se instala el modulo
+  - @Provides: Metodo que indica como crear una dependencia
+  - @Singleton: Asegura que solo exista una instancia de la dependencia
+  - @HiltViewModel: Permite inyectar dependencias en ViewModels
+  - @Inject: Solicita a Hilt que proporcione la dependencia
+
+Photo Picker (Seleccion de Imagenes)
+  - API moderna de Android para seleccionar imagenes/videos
+  - ActivityResultContracts.PickVisualMedia: Contract para Photo Picker
+  - PickVisualMediaRequest: Configura que tipo de media seleccionar
+  - rememberLauncherForActivityResult: Integra el launcher en Compose
+  - No requiere permisos de almacenamiento (mejor privacidad)
+  - Automaticamente usa ACTION_OPEN_DOCUMENT como fallback en Android < 13
+
+Coil (Carga de Imagenes)
+  - Libreria moderna para cargar y mostrar imagenes en Compose
+  - AsyncImage: Componente Compose para cargar imagenes asincronamente
+  - Maneja caching, redimensionamiento y errores automaticamente
+  - Optimizado para Compose y corutinas
+
+ViewModel en Compose
+  - hiltViewModel(): Funcion para obtener ViewModel inyectado por Hilt
+  - collectAsState(): Convierte Flow a State observable por Compose
+  - Separacion de logica de negocio de la UI
+  - Sobrevive a recomposiciones de Compose
+
+Testing con Mockito y Coroutines
+  - Mockito: Framework para mockear objetos en tests
+  - mockito-kotlin: Extensiones de Mockito para Kotlin
+  - @Mock: Crea un mock de una clase
+  - when().thenReturn(): Configura comportamiento del mock
+  - verify(): Verifica que se llamo a un metodo del mock
+  - runTest: Funcion para ejecutar tests con corutinas
+  - flow.first(): Obtiene el primer valor emitido por un Flow
+
+COMO PROBAR QUE FUNCIONA
+-------------------------
+1. Abre el proyecto en Android Studio
+2. Sincroniza Gradle (File > Sync Project with Gradle Files)
+3. Ejecuta las pruebas unitarias:
+   - Right-click en ReceiptRepositoryTest > Run 'ReceiptRepositoryTest'
+   - Right-click en ReceiptEntityTest > Run 'ReceiptEntityTest'
+4. Ejecuta la app en un emulador o dispositivo:
+   - Pulsa "Run" o Shift+F10
+5. En la app:
+   - Verifica que aparece la pantalla de inicio
+   - Pulsa "Añadir un ticket"
+   - Pulsa "Elegir de galeria"
+   - Selecciona una imagen de tu galeria
+   - Verifica que la imagen se muestra en la pantalla
+   - Pulsa "Volver" para regresar al inicio
+
+VERIFICACION TECNICA
+-------------------
+- Hilt genera codigo correctamente (sin errores de KSP)
+- Photo Picker funciona en el dispositivo
+- Coil carga la imagen sin errores
+- ViewModel inyectado correctamente
+- Database proporcionada por Hilt funciona
+- Pruebas unitarias pasan exitosamente
+
+LIMITACIONES ACTUALES
+--------------------
+- El boton "Tomar una foto" sigue deshabilitado
+- La funcion saveReceipt guarda un ticket basico sin datos de OCR
+- No hay pantalla para visualizar los tickets guardados
+- No hay implementacion de OCR o parser aun
+- La URI de la imagen no se persiste aun
+
+DECISIONES DE DISEÑO
+--------------------
+- Photo Picker en lugar de GetContent: mas moderno, mejor UX, sin permisos
+- Coil en lugar de URI directa: mejor rendimiento, caching automatico
+- Hilt en lugar de DI manual: arquitectura escalable, estandar de la industria
+- Java 17 en lugar de Java 11: requerido por Hilt moderno y Compose
+- Módulos por feature en lugar de modulo unico: mejor organizacion futura
+- Pruebas unitarias desde el principio: mejor calidad, detectar bugs temprano
+
+PROXIMO PASO RECOMENDADO
+-------------------------
+La siguiente fase podria ser:
+1. Implementar captura de camara con CameraX
+2. Integrar ML Kit para OCR
+3. Crear parser de texto de tickets
+4. Conectar OCR -> Parser -> Repository
+5. Crear pantalla de visualizacion de tickets guardados
+
+Lo mas logico seria continuar con la captura de camara para tener ambas
+opciones (galeria y camara) antes de pasar al OCR.
