@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "78037706690",
+    "project_id": "easyreceiptanalyzer",
+    "storage_bucket": "easyreceiptanalyzer.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:78037706690:android:56d73be75f151e349b585b",
+        "android_client_info": {
+          "package_name": "com.easyreceiptanalyzer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUlq9-4hx44HngHOhj8S9QnpHOrA71TDE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

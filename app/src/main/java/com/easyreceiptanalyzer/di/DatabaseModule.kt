@@ -1,8 +1,8 @@
 package com.easyreceiptanalyzer.di
 
 import android.content.Context
-import androidx.room3.AndroidSQLiteDriver
-import androidx.room3.Room
+import androidx.room.Room
+import com.easyreceiptanalyzer.data.ProductCategoryDao
 import com.easyreceiptanalyzer.data.ReceiptRepository
 import com.easyreceiptanalyzer.data.local.AppDatabase
 import com.easyreceiptanalyzer.data.local.ReceiptDao
@@ -20,18 +20,23 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
-        return Room.databaseBuilder<AppDatabase>(
-            context = context.applicationContext,
-            name = "easy_receipt_analyzer.db"
-        )
-            .setDriver(AndroidSQLiteDriver())
-            .build()
+        return Room.databaseBuilder(
+            context.applicationContext,
+            AppDatabase::class.java,
+            "easy_receipt_analyzer.db"
+        ).build()
     }
 
     @Provides
     @Singleton
     fun provideReceiptDao(database: AppDatabase): ReceiptDao {
         return database.receiptDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideProductCategoryDao(database: AppDatabase): ProductCategoryDao {
+        return database.productCategoryDao()
     }
 
     @Provides
