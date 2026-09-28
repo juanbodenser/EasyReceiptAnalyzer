@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -6,6 +8,13 @@ plugins {
     alias(libs.plugins.google.services)
     alias(libs.plugins.kotlin.android)
 }
+
+// Lee local.properties
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val deepseekApiKey: String = localProps.getProperty("deepseek.api.key") ?: ""
 
 android {
     namespace = "com.easyreceiptanalyzer"
@@ -19,6 +28,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Inyecta la clave en BuildConfig
+        buildConfigField("String", "DEEPSEEK_API_KEY", "\"${deepseekApiKey.replace("\"", "\\\"")}\"")
     }
 
     buildTypes {
@@ -36,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true   // ← IMPORTANTE: activa BuildConfig
     }
     kotlinOptions {
         jvmTarget = "17"

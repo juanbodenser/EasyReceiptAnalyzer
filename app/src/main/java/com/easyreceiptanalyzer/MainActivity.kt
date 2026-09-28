@@ -95,6 +95,7 @@ fun EasyReceiptAnalyzerApp() {
             )
         }
     }
+    android.util.Log.d("DeepSeekKey", "Longitud: ${BuildConfig.DEEPSEEK_API_KEY.length}")
 }
 
 @Composable

@@ -24,7 +24,9 @@ object DatabaseModule {
             context.applicationContext,
             AppDatabase::class.java,
             "easy_receipt_analyzer.db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

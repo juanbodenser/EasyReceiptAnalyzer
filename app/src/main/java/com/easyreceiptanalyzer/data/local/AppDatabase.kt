@@ -6,8 +6,12 @@ import com.easyreceiptanalyzer.data.ProductCategoryDao
 import com.easyreceiptanalyzer.data.ProductCategoryOverride
 
 @Database(
-    entities = [ReceiptEntity::class, ProductCategoryOverride::class],
-    version = 2,
+    entities = [
+        ReceiptEntity::class,
+        ItemEntity::class,
+        ProductCategoryOverride::class
+    ],
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

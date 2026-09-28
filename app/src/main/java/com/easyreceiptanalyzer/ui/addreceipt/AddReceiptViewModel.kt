@@ -5,12 +5,13 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.easyreceiptanalyzer.data.DeepSeekReceiptAnalyzer
 import com.easyreceiptanalyzer.data.EditableReceiptItem
-import com.easyreceiptanalyzer.data.GeminiReceiptAnalyzer
 import com.easyreceiptanalyzer.data.ProductCategory
 import com.easyreceiptanalyzer.data.ProductCategoryDao
 import com.easyreceiptanalyzer.data.ProductCategorizer
 import com.easyreceiptanalyzer.data.ReceiptRepository
+import com.easyreceiptanalyzer.data.local.ItemEntity
 import com.easyreceiptanalyzer.data.local.ReceiptEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -65,8 +66,8 @@ class AddReceiptViewModel @Inject constructor(
             _errorMessage.value = null
             try {
                 val bitmap = MediaStore.Images.Media.getBitmap(appContext.contentResolver, uri)
-                val parsed = GeminiReceiptAnalyzer.analyze(bitmap)
-                lastRawText = null // ya no generamos texto OCR crudo con este método
+                val parsed = DeepSeekReceiptAnalyzer.analyze(bitmap)
+                lastRawText = null
 
                 _receiptMeta.value = ReceiptMeta(parsed.storeName, parsed.date, parsed.total)
 
@@ -76,7 +77,7 @@ class AddReceiptViewModel @Inject constructor(
                 }
                 _items.value = editable
             } catch (e: Exception) {
-                _errorMessage.value = e.localizedMessage ?: "Error al analizar el ticket con IA."
+                _errorMessage.value = e.localizedMessage ?: "Error al analizar el ticket con DeepSeek."
             } finally {
                 _isProcessingOcr.value = false
             }
@@ -110,11 +111,23 @@ class AddReceiptViewModel @Inject constructor(
                     totalCents = totalCents,
                     rawText = lastRawText
                 )
-                receiptRepository.saveReceipt(entity)
+
+                val itemEntities = _items.value.map { editableItem ->
+                    ItemEntity(
+                        receiptId = 0,
+                        name = editableItem.name,
+                        priceCents = Math.round(editableItem.price * 100),
+                        category = editableItem.category.name
+                    )
+                }
+
+                receiptRepository.saveReceipt(entity, itemEntities)
 
                 _selectedImageUri.value = null
                 _receiptMeta.value = null
                 _items.value = emptyList()
+            } catch (e: Exception) {
+                _errorMessage.value = e.localizedMessage ?: "Error al guardar el ticket."
             } finally {
                 _isSaving.value = false
             }
