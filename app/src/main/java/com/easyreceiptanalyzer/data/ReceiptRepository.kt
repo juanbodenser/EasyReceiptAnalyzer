@@ -15,8 +15,11 @@ class ReceiptRepository(
     suspend fun getItems(receiptId: Long): List<ItemEntity> =
         receiptDao.getItemsForReceipt(receiptId)
 
-    suspend fun saveReceipt(receipt: ReceiptEntity, items: List<ItemEntity>): Long =
+    suspend fun saveReceipt(receipt: ReceiptEntity, items: List<ItemEntity> = emptyList()): Long =
         receiptDao.insertReceiptWithItems(receipt, items)
 
     suspend fun deleteReceipt(id: Long) = receiptDao.deleteById(id)
+
+    suspend fun findSimilarReceipt(purchaseDate: Long?, totalCents: Long?): ReceiptEntity? =
+        receiptDao.findSimilar(purchaseDate, totalCents)
 }

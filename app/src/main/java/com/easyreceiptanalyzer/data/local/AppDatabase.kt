@@ -17,4 +17,5 @@ import com.easyreceiptanalyzer.data.ProductCategoryOverride
 abstract class AppDatabase : RoomDatabase() {
     abstract fun receiptDao(): ReceiptDao
     abstract fun productCategoryDao(): ProductCategoryDao
+    abstract fun analysisDao(): AnalysisDao
 }

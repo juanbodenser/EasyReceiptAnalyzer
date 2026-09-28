@@ -152,7 +152,7 @@ object DeepSeekReceiptAnalyzer {
 
         ParsedReceipt(
             storeName = json.optString("store", "Desconocido"),
-            date = json.optString("date", "2026-01-01"),
+            date = json.optString("date", ""),
             total = json.optDouble("total", 0.0),
             items = items
         )

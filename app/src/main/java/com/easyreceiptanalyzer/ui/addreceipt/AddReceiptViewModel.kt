@@ -20,10 +20,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
 data class ReceiptMeta(val storeName: String, val date: String, val total: Double)
+
+data class DuplicateWarning(val existingReceipt: ReceiptEntity)
 
 @HiltViewModel
 class AddReceiptViewModel @Inject constructor(
@@ -50,6 +53,9 @@ class AddReceiptViewModel @Inject constructor(
     private val _items = MutableStateFlow<List<EditableReceiptItem>>(emptyList())
     val items: StateFlow<List<EditableReceiptItem>> = _items.asStateFlow()
 
+    private val _duplicateWarning = MutableStateFlow<DuplicateWarning?>(null)
+    val duplicateWarning: StateFlow<DuplicateWarning?> = _duplicateWarning.asStateFlow()
+
     private var lastRawText: String? = null
 
     fun selectImage(uri: Uri?) {
@@ -57,6 +63,7 @@ class AddReceiptViewModel @Inject constructor(
         _receiptMeta.value = null
         _items.value = emptyList()
         _errorMessage.value = null
+        _duplicateWarning.value = null
     }
 
     fun analyzeReceipt() {
@@ -69,7 +76,14 @@ class AddReceiptViewModel @Inject constructor(
                 val parsed = DeepSeekReceiptAnalyzer.analyze(bitmap)
                 lastRawText = null
 
-                _receiptMeta.value = ReceiptMeta(parsed.storeName, parsed.date, parsed.total)
+                // Si la IA no detecta fecha, usamos la de hoy
+                val displayDate = if (parsed.date.isBlank()) {
+                    SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                } else {
+                    parsed.date
+                }
+
+                _receiptMeta.value = ReceiptMeta(parsed.storeName, displayDate, parsed.total)
 
                 val editable = parsed.items.map { item ->
                     val category = ProductCategorizer.categorize(item.name, productCategoryDao)
@@ -95,15 +109,29 @@ class AddReceiptViewModel @Inject constructor(
         }
     }
 
-    fun saveReceipt() {
+    fun saveReceipt(checkDuplicates: Boolean = true) {
         val meta = _receiptMeta.value ?: return
         viewModelScope.launch {
             _isSaving.value = true
             try {
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                val dateMillis = runCatching { dateFormat.parse(meta.date)?.time }.getOrNull()
+                val dateMillis = runCatching { dateFormat.parse(meta.date)?.time }
+                    .getOrNull()
+                    ?: System.currentTimeMillis()
                 val correctedTotal = _items.value.sumOf { it.price }
                 val totalCents = Math.round(correctedTotal * 100)
+
+                if (checkDuplicates) {
+                    val existing = receiptRepository.findSimilarReceipt(
+                        purchaseDate = dateMillis,
+                        totalCents = totalCents
+                    )
+                    if (existing != null) {
+                        _duplicateWarning.value = DuplicateWarning(existing)
+                        _isSaving.value = false
+                        return@launch
+                    }
+                }
 
                 val entity = ReceiptEntity(
                     storeName = meta.storeName,
@@ -126,11 +154,21 @@ class AddReceiptViewModel @Inject constructor(
                 _selectedImageUri.value = null
                 _receiptMeta.value = null
                 _items.value = emptyList()
+                _duplicateWarning.value = null
             } catch (e: Exception) {
                 _errorMessage.value = e.localizedMessage ?: "Error al guardar el ticket."
             } finally {
                 _isSaving.value = false
             }
         }
+    }
+
+    fun confirmSaveDespiteDuplicate() {
+        _duplicateWarning.value = null
+        saveReceipt(checkDuplicates = false)
+    }
+
+    fun dismissDuplicateWarning() {
+        _duplicateWarning.value = null
     }
 }

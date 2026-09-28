@@ -27,6 +27,14 @@ interface ReceiptDao {
     @Query("DELETE FROM receipts WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("""
+        SELECT * FROM receipts
+        WHERE purchaseDate = :purchaseDate
+          AND totalCents = :totalCents
+        LIMIT 1
+    """)
+    suspend fun findSimilar(purchaseDate: Long?, totalCents: Long?): ReceiptEntity?
+
     @Transaction
     suspend fun insertReceiptWithItems(receipt: ReceiptEntity, items: List<ItemEntity>): Long {
         val receiptId = insert(receipt)
