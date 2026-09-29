@@ -86,6 +86,8 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.mlkit.text.recognition)
+    implementation(libs.play.services.mlkit.document.scanner)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
 }
 
 configurations.all {

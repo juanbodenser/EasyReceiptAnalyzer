@@ -1,0 +1,154 @@
+========================================================================
+             EASY RECEIPT ANALYZER - ESTRUCTURA DEL PROYECTO
+========================================================================
+
+Este documento describe la arquitectura y los principales componentes
+desarrollados en la aplicación EasyReceiptAnalyzer.
+
+------------------------------------------------------------------------
+1. CAPA DE INTERFAZ DE USUARIO Y NAVEGACIÓN (UI LAYER)
+------------------------------------------------------------------------
+Ubicación: app/src/main/java/com/easyreceiptanalyzer/
+
+• MainActivity.kt
+  - Punto de entrada principal con Jetpack Compose.
+  - Implementa la navegación basada en estados mediante la sealed class AppScreen
+    (Home, AddReceipt, History, Analysis, ReceiptDetail).
+  - Incluye la HomeScreen rediseñada con la interfaz industrial (Paleta Control).
+
+• ui/addreceipt/
+  - AddReceiptViewModel.kt: Lógica para la selección de imágenes desde la galería,
+    análisis del ticket vía IA, edición de precios/categorías y guardado con detección
+    de duplicados.
+
+• ui/history/
+  - HistoryScreen.kt: Pantalla con el listado completo de tickets guardados ordenados
+    de más reciente a más antiguo.
+  - HistoryViewModel.kt: Expone el flujo reactivo (StateFlow) de tickets.
+  - ReceiptDetailScreen.kt: Vista detallada del ticket con desglose de ítems,
+    categorías, total e importe, y opción de eliminación confirmada.
+  - ReceiptDetailViewModel.kt: Carga reactiva de los ítems y gestión del borrado.
+
+• ui/analysis/
+  - AnalysisScreen.kt: Pantalla de estadísticas y control mensual. Muestra gasto
+    total, ticket medio, porcentaje de gasto por categoría y Top 5 productos.
+  - AnalysisViewModel.kt: Gestión del selector de mes/año y navegación entre categorías.
+
+• ui/theme/
+  - Color.kt, Theme.kt, Type.kt: Definición del tema visual oscuro (Paleta Control:
+    azul-negro profundo, verde menta eléctrico, cian y amarillo/ámbar).
+
+------------------------------------------------------------------------
+2. CAPA DE NEGOCIO Y ANÁLISIS POR IA (DATA / PARSER LAYER)
+------------------------------------------------------------------------
+Ubicación: app/src/main/java/com/easyreceiptanalyzer/data/
+
+• GeminiReceiptAnalyzer.kt & DeepSeekReceiptAnalyzer.kt
+  - Módulos de análisis multimodal mediante Inteligencia Artificial.
+  - Envían la imagen del ticket comprimida en Base64 y devuelven un JSON
+    estructurado con tienda, fecha, total y desglose de productos.
+
+• ProductCategorizer.kt & CategoryKeywords.kt
+  - Clasificación automática e inteligente de productos en categorías
+    (Lácteos, Carne y Pescado, Fruta y Verdura, Bebidas, Despensa, Snacks, etc.).
+  - Soporta aprendizaje y persistencia de correcciones manuales del usuario.
+
+• ParsedReceipt.kt & EditableReceiptItem.kt
+  - Modelos de datos para el objeto parseado y el estado editable en pantalla.
+
+• Parseadores locales / fallback:
+  - ReceiptParserRouter.kt, MercadonaParser.kt, DiaParser.kt, OcrTextExtractor.kt,
+    ReceiptParsingUtils.kt, StoreReceiptParser.kt.
+
+------------------------------------------------------------------------
+3. CAPA DE PERSISTENCIA LOCAL (ROOM DATABASE)
+------------------------------------------------------------------------
+Ubicación: app/src/main/java/com/easyreceiptanalyzer/data/local/
+
+• AppDatabase.kt
+  - Base de datos principal de Room (versión 3).
+
+• Entidades:
+  - ReceiptEntity.kt: Registro principal del ticket (tienda, fecha, total en céntimos).
+  - ItemEntity.kt: Productos individuales del ticket (relación 1:N con clave foránea
+    CASCADE hacia ReceiptEntity).
+  - ProductCategoryOverride.kt: Reglas de sustitución manual de categoría creadas por el usuario.
+
+• Data Access Objects (DAOs):
+  - ReceiptDao.kt: Consultas de lectura, inserción atómica de tickets con ítems
+    (`insertReceiptWithItems`), borrado por ID y búsqueda de duplicados (`findSimilar`).
+  - AnalysisDao.kt: Consultas de agregación SQL (`getMonthlySummary`, `getCategoryTotals`,
+    `getTopProducts`) para la pantalla de métricas.
+
+------------------------------------------------------------------------
+4. INYECCIÓN DE DEPENDENCIAS Y REPOSITORIOS (DI & REPOSITORIES)
+------------------------------------------------------------------------
+• ReceiptRepository.kt (Ubicación: data/)
+  - Repositorio unificado para operaciones CRUD de tickets e ítems.
+
+• AnalysisRepository.kt (Ubicación: data/)
+  - Repositorio para la agregación de estadísticas por rangos de fechas mensuales.
+
+• DatabaseModule.kt (Ubicación: di/)
+  - Módulo de Hilt que provee la instancia de Room (`AppDatabase`), los DAOs
+    y los repositorios en el grafo de dependencias.
+
+• EasyReceiptApplication.kt (Ubicación: raíz del paquete com.easyreceiptanalyzer)
+  - Clase `Application` anotada con `@HiltAndroidApp` para el inicio de Hilt.
+
+------------------------------------------------------------------------
+5. LISTADO COMPLETO DE ARCHIVOS Y CLASES DEL PROYECTO
+------------------------------------------------------------------------
+
+[Código Fuente Principal - app/src/main/java/com/easyreceiptanalyzer/]
+
+Raíz del paquete:
+- EasyReceiptApplication.kt
+- MainActivity.kt
+
+Capa Data:
+- data/AnalysisRepository.kt
+- data/CategoryKeywords.kt
+- data/DeepSeekReceiptAnalyzer.kt
+- data/DiaParser.kt
+- data/EditableReceiptItem.kt
+- data/GeminiReceiptAnalyzer.kt
+- data/MercadonaParser.kt
+- data/OcrTextExtractor.kt
+- data/ParsedReceipt.kt
+- data/ProductCategorizer.kt
+- data/ProductCategory.kt
+- data/ProductCategoryOverride.kt
+- data/ReceiptParserRouter.kt
+- data/ReceiptParsingUtils.kt
+- data/ReceiptRepository.kt
+- data/StoreReceiptParser.kt
+
+Capa Data (Base de Datos Local - Room):
+- data/local/AnalysisDao.kt
+- data/local/AppDatabase.kt
+- data/local/ItemEntity.kt
+- data/local/ReceiptDao.kt
+- data/local/ReceiptEntity.kt
+
+Capa Inyección de Dependencias (Hilt):
+- di/DatabaseModule.kt
+
+Capa Interfaz de Usuario (UI):
+- ui/addreceipt/AddReceiptViewModel.kt
+- ui/analysis/AnalysisScreen.kt
+- ui/analysis/AnalysisViewModel.kt
+- ui/history/HistoryScreen.kt
+- ui/history/HistoryViewModel.kt
+- ui/history/ReceiptDetailScreen.kt
+- ui/history/ReceiptDetailViewModel.kt
+- ui/theme/Color.kt
+- ui/theme/Theme.kt
+- ui/theme/Type.kt
+
+[Tests Unitarios - app/src/test/java/com/easyreceiptanalyzer/]
+- data/CategoryKeywordsTest.kt
+- data/ReceiptParserTest.kt
+- data/ReceiptRepositoryTest.kt
+- data/local/ReceiptEntityTest.kt
+========================================================================

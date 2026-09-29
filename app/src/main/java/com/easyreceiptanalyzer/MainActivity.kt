@@ -12,28 +12,31 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,11 +47,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.easyreceiptanalyzer.data.EditableReceiptItem
@@ -57,11 +62,32 @@ import com.easyreceiptanalyzer.ui.addreceipt.AddReceiptViewModel
 import com.easyreceiptanalyzer.ui.analysis.AnalysisScreen
 import com.easyreceiptanalyzer.ui.history.HistoryScreen
 import com.easyreceiptanalyzer.ui.history.ReceiptDetailScreen
+import com.easyreceiptanalyzer.ui.theme.Accent
+import com.easyreceiptanalyzer.ui.theme.AccentCyan
+import com.easyreceiptanalyzer.ui.theme.Danger
 import com.easyreceiptanalyzer.ui.theme.EasyReceiptAnalyzerTheme
+import com.easyreceiptanalyzer.ui.theme.Ink
+import com.easyreceiptanalyzer.ui.theme.InkSurface
+import com.easyreceiptanalyzer.ui.theme.Mist
+import com.easyreceiptanalyzer.ui.theme.MistMuted
+import com.easyreceiptanalyzer.ui.theme.Warning
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.app.Activity
+import android.util.Log
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.result.IntentSenderRequest
+import androidx.compose.ui.layout.ContentScale
+import com.easyreceiptanalyzer.ui.theme.InkSurfaceHigh
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 sealed class AppScreen {
     data object Home : AppScreen()
@@ -130,41 +156,151 @@ fun HomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(Ink)
+            .padding(horizontal = 24.dp)
     ) {
+        Spacer(modifier = Modifier.height(72.dp))
+
+        // ─── Cabecera ───
+        Box(
+            modifier = Modifier
+                .width(56.dp)
+                .height(3.dp)
+                .background(Accent)
+        )
+        Spacer(modifier = Modifier.height(20.dp))
         Text(
-            text = "Easy Receipt Analyzer",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center
+            text = "RECEIPT",
+            style = MaterialTheme.typography.labelLarge,
+            color = Accent,
+            letterSpacing = 6.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "ANALYZER",
+            style = MaterialTheme.typography.displaySmall,
+            color = Mist,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.5).sp
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Controla tus gastos a partir de tus tickets de compra.",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
+            text = "Sistema de control de gastos personales.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MistMuted,
+            letterSpacing = 0.5.sp
         )
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(
-            onClick = onAddReceiptClick,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Añadir un ticket")
-        }
+
+        Spacer(modifier = Modifier.height(56.dp))
+
+        // ─── Acciones ───
+        CommandCard(
+            index = "01",
+            title = "AÑADIR TICKET",
+            subtitle = "Escanear nuevo registro",
+            accent = Accent,
+            onClick = onAddReceiptClick
+        )
         Spacer(modifier = Modifier.height(12.dp))
-        Button(
-            onClick = onHistoryClick,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Ver historial")
-        }
+        CommandCard(
+            index = "02",
+            title = "HISTORIAL",
+            subtitle = "Consultar registros guardados",
+            accent = AccentCyan,
+            onClick = onHistoryClick
+        )
         Spacer(modifier = Modifier.height(12.dp))
-        Button(
-            onClick = onAnalysisClick,
-            modifier = Modifier.fillMaxWidth()
+        CommandCard(
+            index = "03",
+            title = "ANÁLISIS",
+            subtitle = "Métricas y control mensual",
+            accent = Warning,
+            onClick = onAnalysisClick
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // ─── Footer ───
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Ver análisis")
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(Accent)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "SISTEMA OPERATIVO",
+                style = MaterialTheme.typography.labelSmall,
+                color = MistMuted,
+                letterSpacing = 3.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun CommandCard(
+    index: String,
+    title: String,
+    subtitle: String,
+    accent: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(InkSurface)
+            .clickable(onClick = onClick)
+            .height(IntrinsicSize.Min)
+    ) {
+        // Franja izquierda
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .fillMaxHeight()
+                .background(accent)
+        )
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = index,
+                style = MaterialTheme.typography.labelMedium,
+                color = accent,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp
+            )
+            Spacer(modifier = Modifier.width(20.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Mist,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MistMuted
+                )
+            }
+            Text(
+                text = "›",
+                style = MaterialTheme.typography.headlineMedium,
+                color = accent,
+                fontWeight = FontWeight.Light
+            )
         }
     }
 }
@@ -183,70 +319,266 @@ fun AddReceiptScreen(
     val items by viewModel.items.collectAsState()
     val duplicateWarning by viewModel.duplicateWarning.collectAsState()
 
+    val context = LocalContext.current
+    val activity = context as? Activity
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = PickVisualMedia()
     ) { uri -> viewModel.selectImage(uri) }
 
+    val scannerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val scanningResult = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
+            scanningResult?.pages?.firstOrNull()?.let { page ->
+                viewModel.selectImage(page.imageUri)
+            }
+        }
+    }
+
+    val hasAnalysis = receiptMeta != null && items.isNotEmpty()
+
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(Ink)
+            .statusBarsPadding()
             .imePadding()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 24.dp)
     ) {
-        Text(text = "Añadir ticket", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
-        if (selectedImageUri != null) {
-            AsyncImage(
-                model = selectedImageUri,
-                contentDescription = "Ticket seleccionado",
-                modifier = Modifier.fillMaxWidth().height(150.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+        // ─── Cabecera ───
+        Box(
+            modifier = Modifier
+                .width(56.dp)
+                .height(3.dp)
+                .background(Accent)
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = "01 / NUEVO TICKET",
+            style = MaterialTheme.typography.labelLarge,
+            color = Accent,
+            letterSpacing = 4.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "ESCANEAR",
+            style = MaterialTheme.typography.displaySmall,
+            color = Mist,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.5).sp
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ─── Preview de la imagen ───
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .background(InkSurface)
+                .verticalScroll(rememberScrollState()),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            if (selectedImageUri != null) {
+                AsyncImage(
+                    model = selectedImageUri,
+                    contentDescription = "Ticket seleccionado",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    contentScale = ContentScale.FillWidth
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "◫",
+                        color = MistMuted,
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Light
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "SIN IMAGEN",
+                        color = MistMuted,
+                        style = MaterialTheme.typography.labelMedium,
+                        letterSpacing = 3.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ─── Botones FOTO y GALERÍA (secundarios) ───
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Button(
-                onClick = { photoPickerLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly)) },
-                modifier = Modifier.weight(1f)
+                onClick = {
+                    val currentActivity = activity
+                    if (currentActivity == null) {
+                        android.util.Log.e("DocumentScanner", "El contexto no es una Activity")
+                        return@Button
+                    }
+
+                    val options = GmsDocumentScannerOptions.Builder()
+                        .setGalleryImportAllowed(false)
+                        .setPageLimit(1)
+                        .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
+                        .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+                        .build()
+
+                    GmsDocumentScanning.getClient(options)
+                        .getStartScanIntent(currentActivity)
+                        .addOnSuccessListener { intentSender ->
+                            scannerLauncher.launch(
+                                IntentSenderRequest.Builder(intentSender).build()
+                            )
+                        }
+                        .addOnFailureListener { e ->
+                            android.util.Log.e("DocumentScanner", "Error al abrir escáner", e)
+                        }
+                },
+                modifier = Modifier.weight(1f).height(48.dp),
+                shape = RoundedCornerShape(0.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AccentCyan,
+                    contentColor = Ink
+                )
             ) {
-                Text(if (selectedImageUri == null) "Elegir de galería" else "Cambiar Imagen")
+                Text(
+                    text = "FOTO",
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    style = MaterialTheme.typography.labelLarge
+                )
             }
 
             Button(
-                onClick = { viewModel.analyzeReceipt() },
-                modifier = Modifier.weight(1f),
-                enabled = selectedImageUri != null && !isProcessingOcr
+                onClick = {
+                    photoPickerLauncher.launch(
+                        PickVisualMediaRequest(PickVisualMedia.ImageOnly)
+                    )
+                },
+                modifier = Modifier.weight(1f).height(48.dp),
+                shape = RoundedCornerShape(0.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = InkSurfaceHigh,
+                    contentColor = Mist
+                )
             ) {
-                Text("Analizar OCR")
+                Text(
+                    text = "GALERÍA",
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    style = MaterialTheme.typography.labelLarge
+                )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // ─── Estado de procesamiento / errores ───
         if (isProcessingOcr) {
-            CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Procesando OCR con ML Kit...")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(
+                    color = Accent,
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    "PROCESANDO OCR...",
+                    color = MistMuted,
+                    style = MaterialTheme.typography.labelMedium,
+                    letterSpacing = 2.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
         errorMessage?.let {
-            Text(text = "Error: $it", color = MaterialTheme.colorScheme.error)
+            Text(
+                text = "Error: $it",
+                color = Danger,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
-        receiptMeta?.let { meta ->
+        // ─── Contenido del análisis (si hay) ───
+        if (receiptMeta != null) {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(12.dp)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
-                    Text(text = "Establecimiento: ${meta.storeName}", fontWeight = FontWeight.Bold)
-                    Text(text = "Fecha: ${meta.date}")
-                    Text(text = "Importe Total: €${String.format(Locale.getDefault(), "%.2f", meta.total)}", fontWeight = FontWeight.Bold)
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    Text(text = "Productos detectados:", fontWeight = FontWeight.SemiBold)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(InkSurface)
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "ESTABLECIMIENTO",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MistMuted,
+                            letterSpacing = 2.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = receiptMeta?.storeName?.uppercase() ?: "",
+                            color = Mist,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "FECHA",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MistMuted,
+                            letterSpacing = 2.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(receiptMeta?.date ?: "", color = Mist, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "IMPORTE TOTAL",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MistMuted,
+                            letterSpacing = 2.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "€${String.format(Locale.getDefault(), "%.2f", receiptMeta?.total ?: 0.0)}",
+                            color = Accent,
+                            fontWeight = FontWeight.Black,
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    }
+                }
+
+                item {
+                    Text(
+                        text = "PRODUCTOS DETECTADOS",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MistMuted,
+                        letterSpacing = 3.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
 
                 itemsIndexed(items) { _, editableItem ->
@@ -257,52 +589,87 @@ fun AddReceiptScreen(
                     )
                 }
 
-                item {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = { viewModel.saveReceipt() },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSaving
-                    ) {
-                        Text(if (isSaving) "Guardando..." else "Guardar ticket")
-                    }
-                }
+                item { Spacer(modifier = Modifier.height(8.dp)) }
             }
+        } else {
+            Spacer(modifier = Modifier.weight(1f))
         }
 
-        duplicateWarning?.let { warning ->
-            AlertDialog(
-                onDismissRequest = { viewModel.dismissDuplicateWarning() },
-                title = { Text("Ticket duplicado") },
-                text = {
-                    Text(
-                        "Ya tienes un ticket guardado del " +
-                                formatDateShort(warning.existingReceipt.purchaseDate) +
-                                " por €" + String.format(
-                            Locale.getDefault(),
-                            "%.2f",
-                            (warning.existingReceipt.totalCents ?: 0) / 100.0
-                        ) +
-                                ". ¿Quieres guardarlo igualmente?"
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.confirmSaveDespiteDuplicate() }) {
-                        Text("Guardar igualmente")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { viewModel.dismissDuplicateWarning() }) {
-                        Text("Cancelar")
-                    }
+        // ─── Botón principal abajo ───
+        Button(
+            onClick = {
+                if (hasAnalysis) {
+                    viewModel.saveReceipt()
+                } else {
+                    viewModel.analyzeReceipt()
                 }
+            },
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            enabled = selectedImageUri != null && !isProcessingOcr && !isSaving,
+            shape = RoundedCornerShape(0.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Accent,
+                contentColor = Ink,
+                disabledContainerColor = InkSurfaceHigh,
+                disabledContentColor = MistMuted
+            )
+        ) {
+            Text(
+                text = when {
+                    isSaving -> "GUARDANDO..."
+                    isProcessingOcr -> "ANALIZANDO..."
+                    hasAnalysis -> "GUARDAR TICKET"
+                    else -> "ANALIZAR"
+                },
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 3.sp,
+                style = MaterialTheme.typography.titleMedium
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        TextButton(onClick = onBackClick) {
-            Text("Volver")
+        Spacer(modifier = Modifier.height(8.dp))
+
+        TextButton(
+            onClick = onBackClick,
+            modifier = Modifier.padding(bottom = 16.dp)
+        ) {
+            Text(
+                text = "‹  VOLVER",
+                color = MistMuted,
+                letterSpacing = 2.sp,
+                fontWeight = FontWeight.Medium
+            )
         }
+    }
+
+    // ─── Diálogo de duplicado ───
+    duplicateWarning?.let { warning ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissDuplicateWarning() },
+            title = { Text("Ticket duplicado", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Ya tienes un ticket guardado del " +
+                            formatDateShort(warning.existingReceipt.purchaseDate) +
+                            " por €" + String.format(
+                        Locale.getDefault(),
+                        "%.2f",
+                        (warning.existingReceipt.totalCents ?: 0) / 100.0
+                    ) +
+                            ". ¿Quieres guardarlo igualmente?"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmSaveDespiteDuplicate() }) {
+                    Text("Guardar igualmente", color = Accent, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissDuplicateWarning() }) {
+                    Text("Cancelar", color = MistMuted)
+                }
+            }
+        )
     }
 }
 
@@ -318,64 +685,82 @@ private fun ProductItemRow(
         mutableStateOf(String.format(Locale.getDefault(), "%.2f", item.price))
     }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(text = item.name, modifier = Modifier.weight(1f))
-
-            if (isEditingPrice) {
-                OutlinedTextField(
-                    value = priceInput,
-                    onValueChange = { priceInput = it },
-                    modifier = Modifier.width(90.dp),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    label = { Text("€") }
-                )
-                TextButton(onClick = {
-                    val parsed = priceInput.replace(",", ".").toDoubleOrNull() ?: item.price
-                    onPriceConfirmed(parsed)
-                    isEditingPrice = false
-                }) {
-                    Text("OK")
-                }
-            } else {
-                Text(
-                    text = "€${String.format(Locale.getDefault(), "%.2f", item.price)}",
-                    fontWeight = FontWeight.Medium,
-                    color = if (item.price == 0.0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.clickable { isEditingPrice = true }
-                )
-            }
-        }
-
-        Box {
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier
-                    .clickable { categoryMenuExpanded = true }
-                    .padding(top = 2.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(InkSurface)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(Accent.copy(alpha = 0.6f))
+        )
+        Column(modifier = Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = item.category.displayName,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    text = item.name,
+                    modifier = Modifier.weight(1f),
+                    color = Mist,
+                    fontWeight = FontWeight.Medium
                 )
-            }
-            DropdownMenu(
-                expanded = categoryMenuExpanded,
-                onDismissRequest = { categoryMenuExpanded = false }
-            ) {
-                ProductCategory.entries.forEach { category ->
-                    DropdownMenuItem(
-                        text = { Text(category.displayName) },
-                        onClick = {
-                            onCategoryChange(category)
-                            categoryMenuExpanded = false
-                        }
+
+                if (isEditingPrice) {
+                    OutlinedTextField(
+                        value = priceInput,
+                        onValueChange = { priceInput = it },
+                        modifier = Modifier.width(100.dp),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        label = { Text("€", color = MistMuted) }
                     )
+                    TextButton(onClick = {
+                        val parsed = priceInput.replace(",", ".").toDoubleOrNull() ?: item.price
+                        onPriceConfirmed(parsed)
+                        isEditingPrice = false
+                    }) {
+                        Text("OK", color = Accent, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Text(
+                        text = "€${String.format(Locale.getDefault(), "%.2f", item.price)}",
+                        fontWeight = FontWeight.Bold,
+                        color = if (item.price == 0.0) Danger else Accent,
+                        modifier = Modifier.clickable { isEditingPrice = true }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Box {
+                Text(
+                    text = item.category.displayName.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = AccentCyan,
+                    letterSpacing = 1.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .clickable { categoryMenuExpanded = true }
+                        .padding(vertical = 2.dp)
+                )
+                DropdownMenu(
+                    expanded = categoryMenuExpanded,
+                    onDismissRequest = { categoryMenuExpanded = false }
+                ) {
+                    ProductCategory.entries.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category.displayName) },
+                            onClick = {
+                                onCategoryChange(category)
+                                categoryMenuExpanded = false
+                            }
+                        )
+                    }
                 }
             }
         }
