@@ -143,7 +143,7 @@ class AddReceiptViewModel @Inject constructor(
                 val itemEntities = _items.value.map { editableItem ->
                     ItemEntity(
                         receiptId = 0,
-                        name = editableItem.name,
+                        name = editableItem.name.uppercase().trim(),
                         priceCents = Math.round(editableItem.price * 100),
                         category = editableItem.category.name
                     )

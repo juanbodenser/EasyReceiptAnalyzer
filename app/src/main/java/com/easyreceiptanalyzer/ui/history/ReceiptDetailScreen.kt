@@ -1,20 +1,31 @@
 package com.easyreceiptanalyzer.ui.history
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,8 +38,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.easyreceiptanalyzer.data.ProductCategory
+import com.easyreceiptanalyzer.data.local.ItemEntity
+import com.easyreceiptanalyzer.ui.theme.Accent
+import com.easyreceiptanalyzer.ui.theme.AccentCyan
+import com.easyreceiptanalyzer.ui.theme.Danger
+import com.easyreceiptanalyzer.ui.theme.InkSurface
+import com.easyreceiptanalyzer.ui.theme.Mist
+import com.easyreceiptanalyzer.ui.theme.MistMuted
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -60,6 +79,7 @@ fun ReceiptDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .padding(16.dp)
     ) {
         val r = receipt
@@ -87,24 +107,43 @@ fun ReceiptDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(items, key = { it.id }) { item ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(text = item.name, style = MaterialTheme.typography.bodyLarge)
-                                Text(
-                                    text = safeCategoryName(item.category),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
+                        ItemRow(
+                            item = item,
+                            onCategoryChange = { newCategory ->
+                                viewModel.updateItemCategory(
+                                    itemId = item.id,
+                                    newCategory = newCategory,
+                                    productName = item.name
                                 )
                             }
-                            Text(
-                                text = String.format(Locale.getDefault(), "€%.2f", item.priceCents / 100.0),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                        )
+                    }
+                }
+
+                // ─── Notas (solo si el ticket tiene rawText) ───
+                val notes = r.rawText
+                if (!notes.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(InkSurface)
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "NOTAS",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MistMuted,
+                            letterSpacing = 3.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = notes,
+                            color = Mist,
+                            style = MaterialTheme.typography.bodyMedium,
+                            letterSpacing = 0.5.sp
+                        )
                     }
                 }
 
@@ -123,15 +162,23 @@ fun ReceiptDetailScreen(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(
+                OutlinedButton(
                     onClick = { showDeleteDialog = true },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
                     enabled = !isDeleting,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
+                    shape = RoundedCornerShape(0.dp),
+                    border = BorderStroke(1.dp, Danger),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Danger
                     )
                 ) {
-                    Text(if (isDeleting) "Eliminando..." else "Eliminar ticket")
+                    Text(
+                        text = if (isDeleting) "ELIMINANDO..." else "ELIMINAR TICKET",
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp
+                    )
                 }
             }
         }
@@ -160,6 +207,74 @@ fun ReceiptDetailScreen(
                     Text("Cancelar")
                 }
             }
+        )
+    }
+}
+
+@Composable
+private fun ItemRow(
+    item: ItemEntity,
+    onCategoryChange: (ProductCategory) -> Unit
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .background(InkSurface)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(Accent.copy(alpha = 0.6f))
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            Text(
+                text = item.name,
+                color = Mist,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Box {
+                Text(
+                    text = safeCategoryName(item.category).uppercase(),
+                    color = AccentCyan,
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 1.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .clickable { menuExpanded = true }
+                        .padding(vertical = 2.dp)
+                )
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    ProductCategory.entries.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category.displayName) },
+                            onClick = {
+                                onCategoryChange(category)
+                                menuExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        Text(
+            text = String.format(Locale.getDefault(), "€%.2f", item.priceCents / 100.0),
+            color = Mist,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(end = 16.dp, top = 16.dp)
         )
     }
 }

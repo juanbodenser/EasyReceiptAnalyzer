@@ -49,13 +49,13 @@ interface AnalysisDao {
 
     @Query("""
         SELECT 
-            i.name as name,
+            UPPER(TRIM(i.name)) as name,
             COUNT(*) as veces,
             SUM(i.priceCents) as totalCents
         FROM items i
         INNER JOIN receipts r ON i.receiptId = r.id
         WHERE r.purchaseDate BETWEEN :startMillis AND :endMillis
-        GROUP BY i.name
+        GROUP BY UPPER(TRIM(i.name))
         ORDER BY veces DESC
         LIMIT 5
     """)
@@ -63,14 +63,14 @@ interface AnalysisDao {
 
     @Query("""
         SELECT 
-            i.name as name,
+            UPPER(TRIM(i.name)) as name,
             SUM(i.priceCents) as totalCents,
             COUNT(*) as veces
         FROM items i
         INNER JOIN receipts r ON i.receiptId = r.id
         WHERE r.purchaseDate BETWEEN :startMillis AND :endMillis
           AND i.category = :category
-        GROUP BY i.name
+        GROUP BY UPPER(TRIM(i.name))
         ORDER BY totalCents DESC
     """)
     suspend fun getProductsByCategory(
@@ -78,4 +78,7 @@ interface AnalysisDao {
         endMillis: Long,
         category: String
     ): List<ProductTotal>
+
+    @Query("SELECT MAX(purchaseDate) FROM receipts")
+    suspend fun getLastPurchaseDate(): Long?
 }

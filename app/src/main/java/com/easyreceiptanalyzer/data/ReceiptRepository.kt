@@ -22,4 +22,48 @@ class ReceiptRepository(
 
     suspend fun findSimilarReceipt(purchaseDate: Long?, totalCents: Long?): ReceiptEntity? =
         receiptDao.findSimilar(purchaseDate, totalCents)
+
+    suspend fun updateItemCategory(itemId: Long, newCategory: String) {
+        receiptDao.updateItemCategory(itemId, newCategory)
+    }
+
+    /**
+     * Busca un ticket escaneado que coincida con un movimiento bancario.
+     * Usa tolerancia de ±2 días en la fecha para tener en cuenta el desfase
+     * entre la fecha de compra y la fecha de cargo en el banco.
+     *
+     * @return El ticket duplicado, o null si no hay ninguno.
+     */
+    suspend fun findScanDuplicate(
+        date: Long,
+        totalCents: Long
+    ): ReceiptEntity? {
+        val twoDaysMillis = 2L * 24 * 60 * 60 * 1000
+        return receiptDao.findScanDuplicate(
+            minDate = date - twoDaysMillis,
+            maxDate = date + twoDaysMillis,
+            totalCents = totalCents
+        )
+    }
+
+    /**
+     * Guarda un movimiento bancario como ReceiptEntity con source = "bank".
+     * No crea items (los movimientos bancarios no tienen desglose de productos).
+     * La categoría del movimiento se guarda en el campo rawText.
+     */
+    suspend fun saveBankMovement(
+        concept: String,
+        date: Long,
+        amountCents: Long,
+        category: String
+    ): Long {
+        val entity = ReceiptEntity(
+            storeName = concept,
+            purchaseDate = date,
+            totalCents = amountCents,
+            rawText = category,
+            source = "bank"
+        )
+        return receiptDao.insert(entity)
+    }
 }

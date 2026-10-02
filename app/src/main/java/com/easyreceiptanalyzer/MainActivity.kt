@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -60,8 +61,12 @@ import com.easyreceiptanalyzer.data.EditableReceiptItem
 import com.easyreceiptanalyzer.data.ProductCategory
 import com.easyreceiptanalyzer.ui.addreceipt.AddReceiptViewModel
 import com.easyreceiptanalyzer.ui.analysis.AnalysisScreen
+import com.easyreceiptanalyzer.ui.bankimport.BankImportScreen
 import com.easyreceiptanalyzer.ui.history.HistoryScreen
 import com.easyreceiptanalyzer.ui.history.ReceiptDetailScreen
+import com.easyreceiptanalyzer.ui.home.HomeViewModel
+import com.easyreceiptanalyzer.ui.manual.ManualReceiptScreen
+import androidx.compose.runtime.LaunchedEffect
 import com.easyreceiptanalyzer.ui.theme.Accent
 import com.easyreceiptanalyzer.ui.theme.AccentCyan
 import com.easyreceiptanalyzer.ui.theme.Danger
@@ -83,6 +88,7 @@ import android.app.Activity
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.activity.result.IntentSenderRequest
 import androidx.compose.ui.layout.ContentScale
 import com.easyreceiptanalyzer.ui.theme.InkSurfaceHigh
@@ -94,6 +100,8 @@ sealed class AppScreen {
     data object AddReceipt : AppScreen()
     data object History : AppScreen()
     data object Analysis : AppScreen()
+    data object ManualReceipt : AppScreen()
+    data object BankImport : AppScreen()
     data class ReceiptDetail(val receiptId: Long) : AppScreen()
 }
 
@@ -114,6 +122,19 @@ class MainActivity : ComponentActivity() {
 fun EasyReceiptAnalyzerApp() {
     var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.Home) }
 
+    // Intercepta el gesto de volver de Android para navegar por las pantallas internas
+    BackHandler(enabled = currentScreen != AppScreen.Home) {
+        currentScreen = when (currentScreen) {
+            is AppScreen.AddReceipt -> AppScreen.Home
+            is AppScreen.History -> AppScreen.Home
+            is AppScreen.Analysis -> AppScreen.Home
+            is AppScreen.ManualReceipt -> AppScreen.AddReceipt
+            is AppScreen.BankImport -> AppScreen.History
+            is AppScreen.ReceiptDetail -> AppScreen.History
+            is AppScreen.Home -> AppScreen.Home
+        }
+    }
+
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         when (val screen = currentScreen) {
             is AppScreen.Home -> HomeScreen(
@@ -126,16 +147,28 @@ fun EasyReceiptAnalyzerApp() {
             is AppScreen.AddReceipt -> AddReceiptScreen(
                 modifier = Modifier.padding(innerPadding),
                 onBackClick = { currentScreen = AppScreen.Home },
+                onManualClick = { currentScreen = AppScreen.ManualReceipt },
                 viewModel = hiltViewModel()
             )
 
             is AppScreen.History -> HistoryScreen(
                 onBackClick = { currentScreen = AppScreen.Home },
-                onReceiptClick = { id -> currentScreen = AppScreen.ReceiptDetail(id) }
+                onReceiptClick = { id -> currentScreen = AppScreen.ReceiptDetail(id) },
+                onImportClick = { currentScreen = AppScreen.BankImport }
             )
 
             is AppScreen.Analysis -> AnalysisScreen(
                 onBackClick = { currentScreen = AppScreen.Home }
+            )
+
+            is AppScreen.ManualReceipt -> ManualReceiptScreen(
+                onBackClick = { currentScreen = AppScreen.AddReceipt },
+                onSaved = { currentScreen = AppScreen.Home }
+            )
+
+            is AppScreen.BankImport -> BankImportScreen(
+                onBackClick = { currentScreen = AppScreen.History },
+                onImported = { currentScreen = AppScreen.History }
             )
 
             is AppScreen.ReceiptDetail -> ReceiptDetailScreen(
@@ -151,7 +184,8 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     onAddReceiptClick: () -> Unit,
     onHistoryClick: () -> Unit,
-    onAnalysisClick: () -> Unit
+    onAnalysisClick: () -> Unit,
+    viewModel: HomeViewModel = hiltViewModel()
 ) {
     Column(
         modifier = modifier
@@ -191,6 +225,78 @@ fun HomeScreen(
             letterSpacing = 0.5.sp
         )
 
+        // ─── Resumen del mes ───
+        val summary by viewModel.summary.collectAsState()
+
+        LaunchedEffect(Unit) {
+            viewModel.refresh()
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        summary?.let { s ->
+            if (s.numTickets > 0) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(InkSurface)
+                        .height(IntrinsicSize.Min)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(4.dp)
+                            .fillMaxHeight()
+                            .background(Accent)
+                    )
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "GASTO DEL MES",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MistMuted,
+                            letterSpacing = 3.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = String.format(
+                                Locale.getDefault(),
+                                "€%.2f",
+                                s.totalCents / 100.0
+                            ),
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = Accent,
+                            fontWeight = FontWeight.Black
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "${s.numTickets} TICKETS",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MistMuted,
+                                letterSpacing = 1.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = String.format(
+                                    Locale.getDefault(),
+                                    "MEDIA €%.2f",
+                                    s.avgTicketCents / 100.0
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MistMuted,
+                                letterSpacing = 1.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
         Spacer(modifier = Modifier.height(56.dp))
 
         // ─── Acciones ───
@@ -220,7 +326,9 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // ─── Footer ───
+        // ─── Footer: último registro ───
+        val lastDate by viewModel.lastPurchaseDate.collectAsState()
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -234,7 +342,11 @@ fun HomeScreen(
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = "SISTEMA OPERATIVO",
+                text = if (lastDate != null) {
+                    "ÚLTIMO REGISTRO: " + formatLastDate(lastDate!!)
+                } else {
+                    "SIN REGISTROS TODAVÍA"
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = MistMuted,
                 letterSpacing = 3.sp,
@@ -309,6 +421,7 @@ private fun CommandCard(
 fun AddReceiptScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit,
+    onManualClick: () -> Unit,
     viewModel: AddReceiptViewModel = hiltViewModel()
 ) {
     val selectedImageUri by viewModel.selectedImageUri.collectAsState()
@@ -485,6 +598,21 @@ fun AddReceiptScreen(
                     style = MaterialTheme.typography.labelLarge
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        TextButton(
+            onClick = { onManualClick() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "¿NO TIENES TICKET?  AÑADIR MANUAL ›",
+                color = AccentCyan,
+                letterSpacing = 2.sp,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelMedium
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -769,6 +897,11 @@ private fun ProductItemRow(
 
 private fun formatDateShort(millis: Long?): String {
     if (millis == null) return "fecha desconocida"
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    return sdf.format(Date(millis))
+}
+
+private fun formatLastDate(millis: Long): String {
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     return sdf.format(Date(millis))
 }

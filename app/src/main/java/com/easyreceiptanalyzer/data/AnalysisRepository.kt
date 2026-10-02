@@ -31,6 +31,8 @@ class AnalysisRepository @Inject constructor(
         return analysisDao.getProductsByCategory(start, end, category)
     }
 
+    suspend fun getLastPurchaseDate(): Long? = analysisDao.getLastPurchaseDate()
+
     private fun monthRange(year: Int, month: Int): Pair<Long, Long> {
         val cal = Calendar.getInstance()
         cal.clear()

@@ -198,6 +198,30 @@ object CategoryKeywords {
         "CREMA" to ProductCategory.HIGIENE,
 
         // ─────────────────────────────────────────────────────────────
+        // MENAJE — Vajilla, cubiertos, ollas, utensilios de cocina
+        // ─────────────────────────────────────────────────────────────
+        "MENAJE" to ProductCategory.MENAJE,
+        "VAJILLA" to ProductCategory.MENAJE,
+        "PLATO" to ProductCategory.MENAJE,
+        "VASO" to ProductCategory.MENAJE,
+        "TAZA" to ProductCategory.MENAJE,
+        "CUBIERTO" to ProductCategory.MENAJE,
+        "TENEDOR" to ProductCategory.MENAJE,
+        "CUCHILLO" to ProductCategory.MENAJE,
+        "CUCHARA" to ProductCategory.MENAJE,
+        "OLLA" to ProductCategory.MENAJE,
+        "SARTEN" to ProductCategory.MENAJE,
+        "CAZO" to ProductCategory.MENAJE,
+        "BANDEJA" to ProductCategory.MENAJE,
+        "FUENTE" to ProductCategory.MENAJE,
+        "ENSALADERA" to ProductCategory.MENAJE,
+        "ESPATULA" to ProductCategory.MENAJE,
+        "CUCHILLO COCINA" to ProductCategory.MENAJE,
+        "TABLA CORTAR" to ProductCategory.MENAJE,
+        "SERVILLETA" to ProductCategory.MENAJE,
+        "MANTEL" to ProductCategory.MENAJE,
+
+        // ─────────────────────────────────────────────────────────────
         // MASCOTAS
         // ─────────────────────────────────────────────────────────────
         "ARENA" to ProductCategory.MASCOTAS,

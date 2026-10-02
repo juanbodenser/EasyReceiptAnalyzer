@@ -41,4 +41,20 @@ interface ReceiptDao {
         insertItems(items.map { it.copy(receiptId = receiptId) })
         return receiptId
     }
+
+    @Query("UPDATE items SET category = :newCategory WHERE id = :itemId")
+    suspend fun updateItemCategory(itemId: Long, newCategory: String)
+
+    @Query("""
+        SELECT * FROM receipts
+        WHERE source = 'scan'
+          AND purchaseDate BETWEEN :minDate AND :maxDate
+          AND totalCents = :totalCents
+        LIMIT 1
+    """)
+    suspend fun findScanDuplicate(
+        minDate: Long,
+        maxDate: Long,
+        totalCents: Long
+    ): ReceiptEntity?
 }
