@@ -1,7 +1,7 @@
 package com.easyreceiptanalyzer.data.local
 
-import androidx.room3.Entity
-import androidx.room3.PrimaryKey
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
 @Entity(tableName = "receipts")
 data class ReceiptEntity(
@@ -11,5 +11,6 @@ data class ReceiptEntity(
     val purchaseDate: Long? = null,
     val totalCents: Long? = null,
     val rawText: String? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val source: String = "scan"
 )
