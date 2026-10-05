@@ -12,5 +12,7 @@ data class ReceiptEntity(
     val totalCents: Long? = null,
     val rawText: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
-    val source: String = "scan"
+    val source: String = "scan",
+    val notes: String? = null,
+    val isExpense: Boolean = true
 )

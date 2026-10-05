@@ -40,9 +40,9 @@ import com.easyreceiptanalyzer.ui.theme.Accent
 import com.easyreceiptanalyzer.ui.theme.AccentCyan
 import com.easyreceiptanalyzer.ui.theme.Danger
 import com.easyreceiptanalyzer.ui.theme.Ink
+import com.easyreceiptanalyzer.ui.theme.InkSurface
 import com.easyreceiptanalyzer.ui.theme.Mist
 import com.easyreceiptanalyzer.ui.theme.MistMuted
-import com.easyreceiptanalyzer.ui.theme.Warning
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -51,11 +51,11 @@ import java.util.Locale
 fun HistoryScreen(
     onBackClick: () -> Unit,
     onReceiptClick: (Long) -> Unit,
-    onImportClick: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
     val receipts by viewModel.receipts.collectAsState()
     val sortOption by viewModel.sortOption.collectAsState()
+    val activeTab by viewModel.activeTab.collectAsState()
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var menuOpenForReceiptId by remember { mutableStateOf<Long?>(null) }
     var pendingDeleteReceiptId by remember { mutableStateOf<Long?>(null) }
@@ -93,6 +93,45 @@ fun HistoryScreen(
             letterSpacing = (-0.5).sp
         )
         Spacer(modifier = Modifier.height(24.dp))
+
+        // ─── Pestañas ───
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(InkSurface)
+        ) {
+            HistoryTab.entries.forEach { tab ->
+                val selected = tab == activeTab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { viewModel.setActiveTab(tab) }
+                        .background(if (selected) Ink else InkSurface)
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = tab.label,
+                        color = if (selected) Accent else MistMuted,
+                        style = MaterialTheme.typography.labelLarge,
+                        letterSpacing = 2.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    // Línea inferior solo en la pestaña seleccionada
+                    if (selected) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(2.dp)
+                                .background(Accent)
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // ─── Selector de orden ───
         Box {
@@ -174,7 +213,10 @@ fun HistoryScreen(
         if (receipts.isEmpty()) {
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "Todavía no has guardado ningún ticket.",
+                text = when (activeTab) {
+                    HistoryTab.TICKETS -> "Todavía no has guardado ningún ticket."
+                    HistoryTab.MOVEMENTS -> "Todavía no has importado ningún movimiento."
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 color = MistMuted
             )
@@ -199,19 +241,6 @@ fun HistoryScreen(
                 }
                 item { Spacer(modifier = Modifier.height(16.dp)) }
             }
-        }
-
-        TextButton(
-            onClick = onImportClick,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = "IMPORTAR EXTRACTO BANCARIO ›",
-                color = Warning,
-                letterSpacing = 2.sp,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.labelMedium
-            )
         }
 
         TextButton(
@@ -291,9 +320,13 @@ private fun ReceiptRow(
                     )
                 }
                 Text(
-                    text = formatCents(receipt.totalCents),
+                    text = if (receipt.isExpense) {
+                        "- " + formatCents(receipt.totalCents)
+                    } else {
+                        "+ " + formatCents(receipt.totalCents)
+                    },
                     style = MaterialTheme.typography.titleMedium,
-                    color = Accent,
+                    color = if (receipt.isExpense) Danger else Accent,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.width(8.dp))

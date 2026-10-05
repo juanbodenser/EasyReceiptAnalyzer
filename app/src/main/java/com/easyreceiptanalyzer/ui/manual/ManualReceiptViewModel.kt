@@ -2,6 +2,7 @@ package com.easyreceiptanalyzer.ui.manual
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.easyreceiptanalyzer.data.ExpenseCategory
 import com.easyreceiptanalyzer.data.ProductCategory
 import com.easyreceiptanalyzer.data.ReceiptRepository
 import com.easyreceiptanalyzer.data.local.ItemEntity
@@ -15,6 +16,12 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import javax.inject.Inject
+
+enum class ManualEntryType(val label: String) {
+    TICKET("TICKET"),
+    GENERAL("GASTO"),
+    INCOME("INGRESO")
+}
 
 @HiltViewModel
 class ManualReceiptViewModel @Inject constructor(
@@ -34,7 +41,8 @@ class ManualReceiptViewModel @Inject constructor(
         storeName: String,
         totalEuros: Double,
         category: ProductCategory,
-        notes: String
+        notes: String,
+        dateMillis: Long
     ) {
         viewModelScope.launch {
             _isSaving.value = true
@@ -44,7 +52,7 @@ class ManualReceiptViewModel @Inject constructor(
 
                 val entity = ReceiptEntity(
                     storeName = storeName.ifBlank { "Sin tienda" },
-                    purchaseDate = Calendar.getInstance().timeInMillis,
+                    purchaseDate = dateMillis,
                     totalCents = totalCents,
                     rawText = notes.ifBlank { null }
                 )
@@ -62,6 +70,66 @@ class ManualReceiptViewModel @Inject constructor(
                 _saved.value = true
             } catch (e: Exception) {
                 _errorMessage.value = e.localizedMessage ?: "Error al guardar el ticket manual."
+            } finally {
+                _isSaving.value = false
+            }
+        }
+    }
+
+    fun saveManualGeneralExpense(
+        concept: String,
+        totalEuros: Double,
+        category: ExpenseCategory,
+        notes: String,
+        dateMillis: Long
+    ) {
+        viewModelScope.launch {
+            _isSaving.value = true
+            _errorMessage.value = null
+            try {
+                val totalCents = Math.round(totalEuros * 100)
+                val entity = ReceiptEntity(
+                    storeName = concept.ifBlank { "Gasto general" },
+                    purchaseDate = dateMillis,
+                    totalCents = totalCents,
+                    rawText = category.name,
+                    notes = notes.ifBlank { null },
+                    source = "bank"
+                )
+                receiptRepository.saveReceipt(entity, emptyList())
+                _saved.value = true
+            } catch (e: Exception) {
+                _errorMessage.value = e.localizedMessage ?: "Error al guardar el gasto general."
+            } finally {
+                _isSaving.value = false
+            }
+        }
+    }
+
+    fun saveManualIncome(
+        concept: String,
+        totalEuros: Double,
+        notes: String,
+        dateMillis: Long
+    ) {
+        viewModelScope.launch {
+            _isSaving.value = true
+            _errorMessage.value = null
+            try {
+                val totalCents = Math.round(totalEuros * 100)
+                val entity = ReceiptEntity(
+                    storeName = concept.ifBlank { "Ingreso" },
+                    purchaseDate = dateMillis,
+                    totalCents = totalCents,
+                    rawText = ExpenseCategory.INGRESOS.name,
+                    notes = notes.ifBlank { null },
+                    source = "bank",
+                    isExpense = false
+                )
+                receiptRepository.saveReceipt(entity, emptyList())
+                _saved.value = true
+            } catch (e: Exception) {
+                _errorMessage.value = e.localizedMessage ?: "Error al guardar el ingreso."
             } finally {
                 _isSaving.value = false
             }

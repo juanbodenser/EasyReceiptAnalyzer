@@ -9,13 +9,15 @@ import com.easyreceiptanalyzer.data.ProductCategoryOverride
     entities = [
         ReceiptEntity::class,
         ItemEntity::class,
-        ProductCategoryOverride::class
+        ProductCategoryOverride::class,
+        MonthlyBalanceEntity::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun receiptDao(): ReceiptDao
     abstract fun productCategoryDao(): ProductCategoryDao
     abstract fun analysisDao(): AnalysisDao
+    abstract fun monthlyBalanceDao(): MonthlyBalanceDao
 }

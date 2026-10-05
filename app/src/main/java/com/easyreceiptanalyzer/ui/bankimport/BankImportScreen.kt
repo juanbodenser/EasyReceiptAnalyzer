@@ -69,7 +69,6 @@ fun BankImportScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val isImporting by viewModel.isImporting.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
-    val importedCount by viewModel.importedCount.collectAsState()
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -78,9 +77,9 @@ fun BankImportScreen(
     }
 
     // Cuando la importación termina, avisamos al usuario y volvemos
-    LaunchedEffect(importedCount) {
-        if (importedCount != null && importedCount!! > 0) {
-            onImported()
+    LaunchedEffect(Unit) {
+        viewModel.importedEvents.collect { count ->
+            if (count > 0) onImported()
         }
     }
 
@@ -208,6 +207,51 @@ fun BankImportScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                TextButton(
+                    onClick = { viewModel.selectAll() },
+                    modifier = Modifier.weight(1f).height(36.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = AccentCyan)
+                ) {
+                    Text(
+                        text = "MARCAR TODO",
+                        style = MaterialTheme.typography.labelSmall,
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                TextButton(
+                    onClick = { viewModel.deselectAll() },
+                    modifier = Modifier.weight(1f).height(36.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MistMuted)
+                ) {
+                    Text(
+                        text = "DESMARCAR",
+                        style = MaterialTheme.typography.labelSmall,
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                TextButton(
+                    onClick = { viewModel.selectOnlyNew() },
+                    modifier = Modifier.weight(1f).height(36.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = Accent)
+                ) {
+                    Text(
+                        text = "SOLO NUEVOS",
+                        style = MaterialTheme.typography.labelSmall,
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             LazyColumn(
@@ -375,8 +419,12 @@ private fun BankMovementRow(
 
         // Importe
         Text(
-            text = String.format(Locale.getDefault(), "-%.2f€", item.movement.amountCents / 100.0),
-            color = Danger,
+            text = if (item.movement.isExpense) {
+                String.format(Locale.getDefault(), "- %.2f€", item.movement.amountCents / 100.0)
+            } else {
+                String.format(Locale.getDefault(), "+ %.2f€", item.movement.amountCents / 100.0)
+            },
+            color = if (item.movement.isExpense) Danger else Accent,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier

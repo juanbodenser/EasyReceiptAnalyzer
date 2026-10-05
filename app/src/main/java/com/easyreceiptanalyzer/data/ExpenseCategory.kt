@@ -3,6 +3,7 @@ package com.easyreceiptanalyzer.data
 enum class ExpenseCategory(val displayName: String) {
     SUPERMERCADO("Supermercado"),
     TRANSPORTE("Transporte"),
+    COCHE("Coche"),
     RESTAURANTES("Restaurantes"),
     TELEFONIA("Telefonía"),
     SEGUROS("Seguros"),

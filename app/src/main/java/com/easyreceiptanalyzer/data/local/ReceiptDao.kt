@@ -57,4 +57,10 @@ interface ReceiptDao {
         maxDate: Long,
         totalCents: Long
     ): ReceiptEntity?
+
+    @Query("UPDATE receipts SET rawText = :category WHERE id = :receiptId")
+    suspend fun updateReceiptCategory(receiptId: Long, category: String)
+
+    @Query("UPDATE receipts SET notes = :notes WHERE id = :receiptId")
+    suspend fun updateReceiptNotes(receiptId: Long, notes: String?)
 }

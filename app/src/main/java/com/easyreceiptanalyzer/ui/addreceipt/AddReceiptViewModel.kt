@@ -98,6 +98,11 @@ class AddReceiptViewModel @Inject constructor(
         }
     }
 
+    fun onDateChanged(newDate: String) {
+        val current = _receiptMeta.value ?: return
+        _receiptMeta.value = current.copy(date = newDate)
+    }
+
     fun onPriceChanged(item: EditableReceiptItem, newPrice: Double) {
         item.price = newPrice
     }

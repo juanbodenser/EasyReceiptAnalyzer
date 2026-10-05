@@ -1,6 +1,8 @@
 package com.easyreceiptanalyzer
 
+import android.app.DatePickerDialog
 import android.os.Bundle
+import java.util.Calendar
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -51,7 +53,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,11 +86,9 @@ import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.activity.result.IntentSenderRequest
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.layout.ContentScale
 import com.easyreceiptanalyzer.ui.theme.InkSurfaceHigh
 import androidx.compose.foundation.rememberScrollState
@@ -129,7 +128,7 @@ fun EasyReceiptAnalyzerApp() {
             is AppScreen.History -> AppScreen.Home
             is AppScreen.Analysis -> AppScreen.Home
             is AppScreen.ManualReceipt -> AppScreen.AddReceipt
-            is AppScreen.BankImport -> AppScreen.History
+            is AppScreen.BankImport -> AppScreen.AddReceipt
             is AppScreen.ReceiptDetail -> AppScreen.History
             is AppScreen.Home -> AppScreen.Home
         }
@@ -148,13 +147,13 @@ fun EasyReceiptAnalyzerApp() {
                 modifier = Modifier.padding(innerPadding),
                 onBackClick = { currentScreen = AppScreen.Home },
                 onManualClick = { currentScreen = AppScreen.ManualReceipt },
+                onBankImportClick = { currentScreen = AppScreen.BankImport },
                 viewModel = hiltViewModel()
             )
 
             is AppScreen.History -> HistoryScreen(
                 onBackClick = { currentScreen = AppScreen.Home },
-                onReceiptClick = { id -> currentScreen = AppScreen.ReceiptDetail(id) },
-                onImportClick = { currentScreen = AppScreen.BankImport }
+                onReceiptClick = { id -> currentScreen = AppScreen.ReceiptDetail(id) }
             )
 
             is AppScreen.Analysis -> AnalysisScreen(
@@ -167,8 +166,8 @@ fun EasyReceiptAnalyzerApp() {
             )
 
             is AppScreen.BankImport -> BankImportScreen(
-                onBackClick = { currentScreen = AppScreen.History },
-                onImported = { currentScreen = AppScreen.History }
+                onBackClick = { currentScreen = AppScreen.AddReceipt },
+                onImported = { currentScreen = AppScreen.Home }
             )
 
             is AppScreen.ReceiptDetail -> ReceiptDetailScreen(
@@ -422,6 +421,7 @@ fun AddReceiptScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit,
     onManualClick: () -> Unit,
+    onBankImportClick: () -> Unit,
     viewModel: AddReceiptViewModel = hiltViewModel()
 ) {
     val selectedImageUri by viewModel.selectedImageUri.collectAsState()
@@ -434,6 +434,35 @@ fun AddReceiptScreen(
 
     val context = LocalContext.current
     val activity = context as? Activity
+    val datePickerContext = LocalContext.current
+
+    // Helper para abrir el DatePicker nativo
+    val openDatePicker: (String) -> Unit = { currentDate ->
+        val cal = Calendar.getInstance()
+        try {
+            val parts = currentDate.split("-")
+            if (parts.size == 3) {
+                cal.set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt())
+            }
+        } catch (_: Exception) { /* usa fecha actual si falla */ }
+
+        DatePickerDialog(
+            datePickerContext,
+            { _, year, month, dayOfMonth ->
+                val newDate = String.format(
+                    Locale.getDefault(),
+                    "%04d-%02d-%02d",
+                    year,
+                    month + 1,
+                    dayOfMonth
+                )
+                viewModel.onDateChanged(newDate)
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = PickVisualMedia()
@@ -471,7 +500,7 @@ fun AddReceiptScreen(
         )
         Spacer(modifier = Modifier.height(20.dp))
         Text(
-            text = "01 / NUEVO TICKET",
+            text = "01 / NUEVO GASTO",
             style = MaterialTheme.typography.labelLarge,
             color = Accent,
             letterSpacing = 4.sp,
@@ -479,7 +508,7 @@ fun AddReceiptScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "ESCANEAR",
+            text = "AÑADIR GASTO",
             style = MaterialTheme.typography.displaySmall,
             color = Mist,
             fontWeight = FontWeight.Black,
@@ -532,11 +561,15 @@ fun AddReceiptScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // ─── Botones FOTO y GALERÍA (secundarios) ───
+        // ─── Botones FOTO, GALERÍA y MÁS ───
+        var moreMenuExpanded by remember { mutableStateOf(false) }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // ─── Botón FOTO ───
             Button(
                 onClick = {
                     val currentActivity = activity
@@ -578,6 +611,7 @@ fun AddReceiptScreen(
                 )
             }
 
+            // ─── Botón GALERÍA ───
             Button(
                 onClick = {
                     photoPickerLauncher.launch(
@@ -598,21 +632,59 @@ fun AddReceiptScreen(
                     style = MaterialTheme.typography.labelLarge
                 )
             }
-        }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        TextButton(
-            onClick = { onManualClick() },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = "¿NO TIENES TICKET?  AÑADIR MANUAL ›",
-                color = AccentCyan,
-                letterSpacing = 2.sp,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.labelMedium
-            )
+            // ─── Botón [>] con desplegable ───
+            Box {
+                Button(
+                    onClick = { moreMenuExpanded = true },
+                    modifier = Modifier.width(48.dp).height(48.dp),
+                    shape = RoundedCornerShape(0.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = InkSurfaceHigh,
+                        contentColor = Mist
+                    )
+                ) {
+                    Text(
+                        text = "›",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+                DropdownMenu(
+                    expanded = moreMenuExpanded,
+                    onDismissRequest = { moreMenuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "AÑADIR MANUAL",
+                                color = Mist,
+                                letterSpacing = 2.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        },
+                        onClick = {
+                            moreMenuExpanded = false
+                            onManualClick()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "IMPORTAR EXTRACTO",
+                                color = Mist,
+                                letterSpacing = 2.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        },
+                        onClick = {
+                            moreMenuExpanded = false
+                            onBankImportClick()
+                        }
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -680,7 +752,28 @@ fun AddReceiptScreen(
                             letterSpacing = 2.sp,
                             fontWeight = FontWeight.Medium
                         )
-                        Text(receiptMeta?.date ?: "", color = Mist, fontWeight = FontWeight.Medium)
+                        receiptMeta?.let { meta ->
+                            Row(
+                                modifier = Modifier
+                                    .clickable { openDatePicker(meta.date) }
+                                    .padding(vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = formatDateForDisplay(meta.date),
+                                    color = AccentCyan,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "›",
+                                    color = AccentCyan,
+                                    fontWeight = FontWeight.Light,
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
                             text = "IMPORTE TOTAL",
@@ -892,6 +985,16 @@ private fun ProductItemRow(
                 }
             }
         }
+    }
+}
+
+private fun formatDateForDisplay(isoDate: String): String {
+    // Convierte "YYYY-MM-DD" a "DD/MM/YYYY"
+    return try {
+        val parts = isoDate.split("-")
+        if (parts.size == 3) "${parts[2]}/${parts[1]}/${parts[0]}" else isoDate
+    } catch (_: Exception) {
+        isoDate
     }
 }
 

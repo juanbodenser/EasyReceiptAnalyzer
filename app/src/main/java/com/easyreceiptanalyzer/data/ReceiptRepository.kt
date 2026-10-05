@@ -55,15 +55,25 @@ class ReceiptRepository(
         concept: String,
         date: Long,
         amountCents: Long,
-        category: String
+        category: String,
+        isExpense: Boolean = true
     ): Long {
         val entity = ReceiptEntity(
             storeName = concept,
             purchaseDate = date,
             totalCents = amountCents,
             rawText = category,
-            source = "bank"
+            source = "bank",
+            isExpense = isExpense
         )
         return receiptDao.insert(entity)
+    }
+
+    suspend fun updateReceiptCategory(receiptId: Long, category: String) {
+        receiptDao.updateReceiptCategory(receiptId, category)
+    }
+
+    suspend fun updateReceiptNotes(receiptId: Long, notes: String?) {
+        receiptDao.updateReceiptNotes(receiptId, notes)
     }
 }

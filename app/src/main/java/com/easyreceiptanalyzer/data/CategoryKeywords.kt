@@ -9,6 +9,12 @@ object CategoryKeywords {
         // ─────────────────────────────────────────────────────────────
         // SNACKS — Van PRIMERO para que "PATATAS FRITAS" no caiga en FRUTA_VERDURA
         // ─────────────────────────────────────────────────────────────
+        "WAFFERS" to ProductCategory.SNACKS,
+        "WAFFER" to ProductCategory.SNACKS,
+        "GOFRE" to ProductCategory.SNACKS,
+        "GOFRES" to ProductCategory.SNACKS,
+        "PRINGLES" to ProductCategory.SNACKS,
+        "PRINGLE" to ProductCategory.SNACKS,
         "FRITAS" to ProductCategory.SNACKS,
         "CHIPS" to ProductCategory.SNACKS,
         "LAYS" to ProductCategory.SNACKS,
@@ -67,6 +73,8 @@ object CategoryKeywords {
         // ─────────────────────────────────────────────────────────────
         // LACTEOS — Incluye huevos por decisión de diseño
         // ─────────────────────────────────────────────────────────────
+        "LACTEO" to ProductCategory.LACTEOS,
+        "LACTEOS" to ProductCategory.LACTEOS,
         "LECHE" to ProductCategory.LACTEOS,
         "QUESO" to ProductCategory.LACTEOS,
         "YOGUR" to ProductCategory.LACTEOS,
@@ -75,6 +83,10 @@ object CategoryKeywords {
         "REQUESON" to ProductCategory.LACTEOS,
         "HUEVO" to ProductCategory.LACTEOS,
         "PROTEINA" to ProductCategory.LACTEOS,
+        "PROTEICO" to ProductCategory.LACTEOS,
+        "PROTEICA" to ProductCategory.LACTEOS,
+        "PROTEIN" to ProductCategory.LACTEOS,
+        "BATIDO PROTEICO" to ProductCategory.LACTEOS,
 
         // ─────────────────────────────────────────────────────────────
         // CARNE Y PESCADO

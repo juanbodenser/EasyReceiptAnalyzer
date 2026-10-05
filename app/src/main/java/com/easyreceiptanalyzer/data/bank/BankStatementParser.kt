@@ -9,7 +9,7 @@ object BankStatementParser {
 
     /**
      * Parsea un archivo TXT de extracto bancario de CaixaBank.
-     * Devuelve solo los movimientos de GASTO (no ingresos).
+     * Devuelve los movimientos del extracto.
      *
      * @param inputStream El stream del archivo TXT.
      * @return Lista de movimientos parseados.
@@ -41,14 +41,15 @@ object BankStatementParser {
                     val movement = pendingMovement
                     if (movement != null) {
                         val (concept, conceptDate) = extractConceptAndDate(line)
-                        // Solo añadimos movimientos que sean GASTO, tengan concepto válido
-                        // y tengan fecha en el concepto. Los que no, se descartan.
-                        if (movement.isExpense && concept.isNotBlank() && conceptDate != null) {
+                        if (concept.isNotBlank()) {
+                            val finalDate = conceptDate ?: movement.date
+                            val suspicious = isSuspiciousConcept(concept)
                             movements.add(
                                 movement.copy(
-                                    date = conceptDate,
+                                    date = finalDate,
                                     concept = concept,
-                                    rawConcept = line
+                                    rawConcept = line,
+                                    isSuspicious = suspicious
                                 )
                             )
                         }
@@ -82,11 +83,14 @@ object BankStatementParser {
             val amountStr = line.substring(28, 42).trim()
             val amountCents = amountStr.toLongOrNull() ?: return null
 
-            // Determinamos si es gasto o ingreso según el código de operación
-            val isExpense = when (operationCode) {
-                "120401" -> true     // Gasto con tarjeta
-                "120402" -> false    // Ingreso
-                else -> return null  // Ignoramos otros códigos
+            // Determinamos si es gasto o ingreso:
+            // - Códigos que empiezan por "02" son ingresos (nómina, cajero, etc.)
+            // - "120402" es ingreso con tarjeta
+            // - Todo lo demás es gasto (compras, transferencias, adeudos, préstamos, etc.)
+            val isExpense = when {
+                operationCode.startsWith("02") -> false
+                operationCode == "120402" -> false
+                else -> true
             }
 
             BankMovement(
@@ -155,5 +159,17 @@ object BankStatementParser {
         } catch (e: Exception) {
             null
         }
+    }
+
+    private fun isSuspiciousConcept(concept: String): Boolean {
+        val upper = concept.uppercase()
+        return upper.contains("BIZUM ENVIADO") ||
+                upper.contains("BIZUM RECIBIDO") ||
+                upper.contains("REINT.CAJERO") ||
+                upper.contains("REINTEGRO") ||
+                upper.contains("TRANSFERENCIA") ||
+                upper.contains("TRASPASO") ||
+                upper.contains("DEVOLUCION") ||
+                upper.contains("ABONO")
     }
 }

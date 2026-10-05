@@ -8,5 +8,6 @@ data class BankMovement(
     val concept: String,        // Nombre del comercio limpio
     val rawConcept: String,     // Concepto original completo (por si hace falta)
     val amountCents: Long,      // Importe en céntimos (siempre positivo)
-    val isExpense: Boolean      // true = gasto, false = ingreso
+    val isExpense: Boolean,     // true = gasto, false = ingreso
+    val isSuspicious: Boolean = false
 )

@@ -34,7 +34,7 @@ class BankStatementParserTest {
     }
 
     @Test
-    fun parse_ignoraIngresos() {
+    fun parse_aceptaIngresos() {
         val txt = """
 22    13672609272609270204020000000001200000000000000000000000004766********1614
 2301                                      INGRESO CAJERO                         
@@ -43,24 +43,38 @@ class BankStatementParserTest {
 
         val movements = BankStatementParser.parseText(txt)
 
-        assertEquals(0, movements.size)
+        assertEquals(1, movements.size)
+        assertEquals(false, movements[0].isExpense)
     }
 
     @Test
-    fun parse_ignoraLineasSinConcepto() {
+    fun parse_marcaMovimientosSospechosos() {
         val txt = """
-22    9736260902260902120401000000000030820000000000000000000000961318619292493 
-22    9736260902260902120401000000000004000000000000000000000000961318619292493 
-2301Fecha de operaciµn: 02-09-2026        EL RINCON DEL QUI                     
+22    9736260931260931120401000000000050000000000000000000000000961318619292493 
+2301                                      BIZUM ENVIADO                          
 230504000174TCR                           TARJETA CREDITO                       
         """.trimIndent()
 
         val movements = BankStatementParser.parseText(txt)
 
-        // El primer movimiento no tiene línea 2301, se descarta.
-        // El segundo sí, se incluye.
         assertEquals(1, movements.size)
-        assertEquals("EL RINCON DEL QUI", movements[0].concept)
+        assertTrue(movements[0].isSuspicious)
+    }
+
+    @Test
+    fun parse_usaFechaDeLinea22SiNoHayConcepto() {
+        val txt = """
+22    9736260902260902120401000000000030820000000000000000000000961318619292493 
+2301                                      CARREF LOS ANGELE                     
+230504000174TCR                           TARJETA CREDITO                       
+        """.trimIndent()
+
+        val movements = BankStatementParser.parseText(txt)
+
+        // El movimiento tiene concepto pero no fecha en el concepto.
+        // Debería aceptarse usando la fecha de la línea 22.
+        assertEquals(1, movements.size)
+        assertEquals("CARREF LOS ANGELE", movements[0].concept)
     }
 
     @Test

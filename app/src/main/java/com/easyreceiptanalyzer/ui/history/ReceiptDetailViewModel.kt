@@ -70,6 +70,22 @@ class ReceiptDetailViewModel @Inject constructor(
         }
     }
 
+    fun updateCategory(receiptId: Long, category: String) {
+        viewModelScope.launch {
+            receiptRepository.updateReceiptCategory(receiptId, category)
+            // Refrescar el ticket desde la BD
+            _receipt.value = receiptRepository.getReceipt(receiptId)
+        }
+    }
+
+    fun updateNotes(receiptId: Long, notes: String) {
+        viewModelScope.launch {
+            receiptRepository.updateReceiptNotes(receiptId, notes.ifBlank { null })
+            // Refrescar el ticket desde la BD
+            _receipt.value = receiptRepository.getReceipt(receiptId)
+        }
+    }
+
     fun deleteReceipt(receiptId: Long) {
         viewModelScope.launch {
             _isDeleting.value = true

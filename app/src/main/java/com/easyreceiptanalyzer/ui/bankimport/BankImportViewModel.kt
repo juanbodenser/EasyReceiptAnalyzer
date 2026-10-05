@@ -10,9 +10,12 @@ import com.easyreceiptanalyzer.data.bank.BankMovement
 import com.easyreceiptanalyzer.data.bank.BankStatementParser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -44,8 +47,8 @@ class BankImportViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    private val _importedCount = MutableStateFlow<Int?>(null)
-    val importedCount: StateFlow<Int?> = _importedCount.asStateFlow()
+    private val _importedEvents = Channel<Int>(Channel.BUFFERED)
+    val importedEvents: Flow<Int> = _importedEvents.receiveAsFlow()
 
     /**
      * Carga y parsea el archivo TXT del banco. Detecta duplicados
@@ -55,7 +58,6 @@ class BankImportViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
-            _importedCount.value = null
             try {
                 val inputStream = appContext.contentResolver.openInputStream(uri)
                     ?: throw IllegalStateException("No se pudo abrir el archivo")
@@ -74,7 +76,7 @@ class BankImportViewModel @Inject constructor(
                     BankImportItem(
                         movement = movement,
                         isDuplicate = duplicate != null,
-                        isSelected = duplicate == null,  // los duplicados vienen desmarcados
+                        isSelected = duplicate == null && !movement.isSuspicious,
                         category = suggestCategory(movement.concept)
                     )
                 }
@@ -106,6 +108,20 @@ class BankImportViewModel @Inject constructor(
         }
     }
 
+    fun selectAll() {
+        _items.value = _items.value.map { it.copy(isSelected = true) }
+    }
+
+    fun deselectAll() {
+        _items.value = _items.value.map { it.copy(isSelected = false) }
+    }
+
+    fun selectOnlyNew() {
+        _items.value = _items.value.map {
+            it.copy(isSelected = !it.isDuplicate && !it.movement.isSuspicious)
+        }
+    }
+
     /**
      * Importa los movimientos seleccionados. Los que ya estaban guardados
      * se ignoran (no se duplican).
@@ -122,12 +138,12 @@ class BankImportViewModel @Inject constructor(
                         concept = item.movement.concept,
                         date = item.movement.date,
                         amountCents = item.movement.amountCents,
-                        category = item.category.name
+                        category = item.category.name,
+                        isExpense = item.movement.isExpense
                     )
                     count++
                 }
-                _importedCount.value = count
-                _items.value = emptyList()
+                _importedEvents.send(count)
             } catch (e: Exception) {
                 _errorMessage.value = e.localizedMessage ?: "Error al importar"
             } finally {
@@ -142,7 +158,6 @@ class BankImportViewModel @Inject constructor(
     fun reset() {
         _items.value = emptyList()
         _errorMessage.value = null
-        _importedCount.value = null
     }
 
     /**
@@ -160,14 +175,32 @@ class BankImportViewModel @Inject constructor(
             upper.contains("SUPER") ||
             upper.contains("MARKET") -> ExpenseCategory.SUPERMERCADO
 
+            // ─── COCHE ───
             upper.contains("PLENERGY") ||
             upper.contains("REPSOL") ||
             upper.contains("CEPSA") ||
             upper.contains("GALP") ||
+            upper.contains("SHELL") ||
+            upper.contains("BP ") ||
+            upper.contains("ITV") ||
+            upper.contains("TALLER") ||
+            upper.contains("PARKING") ||
+            upper.contains("APARCAMIENTO") ||
+            upper.contains("MOVILIDAD MMD") ||
+            upper.contains("LENDROCK") ||
+            upper.contains("PRESTAMO") ||
+            upper.contains("CUOTA COCHE") ||
+            upper.contains("FINANCIACION") -> ExpenseCategory.COCHE
+
+            // ─── TRANSPORTE ───
             upper.contains("METRO") ||
-            upper.contains("MOVILIDAD") ||
             upper.contains("UBER") ||
-            upper.contains("CABIFY") -> ExpenseCategory.TRANSPORTE
+            upper.contains("CABIFY") ||
+            upper.contains("TAXI") ||
+            upper.contains("BICIMAD") ||
+            upper.contains("RENFE") ||
+            upper.contains("CERCANIAS") ||
+            upper.contains("MOVILIDAD") -> ExpenseCategory.TRANSPORTE
 
             upper.contains("MILA PUB") ||
             upper.contains("RINCON") ||
