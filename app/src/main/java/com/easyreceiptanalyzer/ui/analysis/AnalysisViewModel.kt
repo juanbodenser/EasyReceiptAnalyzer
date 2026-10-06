@@ -22,10 +22,8 @@ import java.util.Calendar
 import javax.inject.Inject
 
 enum class AnalysisMode(val label: String) {
-    GROCERY("SUPERMERCADO"),
-    GENERAL("GENERALES"),
-    BALANCE("BALANCE"),
-    ALL("TODO")
+    EXPENSES("GASTOS"),
+    SUMMARY("RESUMEN")
 }
 
 enum class HistorySortMode(val label: String) {
@@ -38,7 +36,7 @@ enum class HistorySortMode(val label: String) {
 data class AnalysisUiState(
     val year: Int,
     val month: Int,
-    val mode: AnalysisMode = AnalysisMode.GROCERY,
+    val mode: AnalysisMode = AnalysisMode.EXPENSES,
     val isLoading: Boolean = false,
     // Supermercado
     val summary: MonthlySummary? = null,

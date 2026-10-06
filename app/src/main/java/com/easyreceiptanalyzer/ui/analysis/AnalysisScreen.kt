@@ -2,8 +2,6 @@ package com.easyreceiptanalyzer.ui.analysis
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -146,13 +144,12 @@ fun AnalysisScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(InkSurface)
-                .horizontalScroll(rememberScrollState())
         ) {
             AnalysisMode.entries.forEach { mode ->
                 val selected = mode == state.mode
                 Box(
                     modifier = Modifier
-                        .width(120.dp)
+                        .weight(1f)
                         .clickable { viewModel.setMode(mode) }
                         .background(if (selected) Ink else InkSurface)
                         .padding(vertical = 12.dp),
@@ -186,18 +183,16 @@ fun AnalysisScreen(
             CircularProgressIndicator(color = Warning)
         } else {
             when (state.mode) {
-                AnalysisMode.GROCERY -> GroceryContent(state, onCategoryClick = { viewModel.openCategory(it) })
-                AnalysisMode.GENERAL -> GeneralContent(state, onExpenseCategoryClick = { viewModel.openExpenseCategory(it) })
-                AnalysisMode.BALANCE -> BalanceContent(
+                AnalysisMode.EXPENSES -> ExpensesContent(
+                    state = state,
+                    onCategoryClick = { viewModel.openCategory(it) },
+                    onExpenseCategoryClick = { viewModel.openExpenseCategory(it) }
+                )
+                AnalysisMode.SUMMARY -> SummaryContent(
                     state = state,
                     onCloseMonth = { viewModel.closeCurrentMonth() },
                     onReopenMonth = { viewModel.reopenCurrentMonth() },
                     onSortChange = { viewModel.setHistorySortMode(it) }
-                )
-                AnalysisMode.ALL -> AllContent(
-                    state,
-                    onCategoryClick = { viewModel.openCategory(it) },
-                    onExpenseCategoryClick = { viewModel.openExpenseCategory(it) }
                 )
             }
         }
@@ -373,89 +368,130 @@ private fun SectionTitle(title: String, rightText: String = "GASTO") {
 }
 
 @Composable
-private fun ColumnScope.GroceryContent(state: AnalysisUiState, onCategoryClick: (String) -> Unit) {
-    val summary = state.summary
-    if (summary == null || summary.numTickets == 0) {
+private fun ColumnScope.ExpensesContent(
+    state: AnalysisUiState,
+    onCategoryClick: (String) -> Unit,
+    onExpenseCategoryClick: (String) -> Unit
+) {
+    val grocery = state.summary
+    val general = state.generalSummary
+    val totalGrocery = grocery?.totalCents ?: 0L
+    val totalGeneral = general?.totalCents ?: 0L
+    val totalAll = totalGrocery + totalGeneral
+    val numAll = (grocery?.numTickets ?: 0) + (general?.numMovements ?: 0)
+
+    if (totalAll == 0L) {
         Text(
-            text = "No hay tickets guardados en este mes.",
+            text = "No hay gastos guardados en este mes.",
             style = MaterialTheme.typography.bodyLarge,
             color = MistMuted
         )
         return
     }
+
     LazyColumn(
         modifier = Modifier.fillMaxWidth().weight(1f),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        item { TotalPanel(summary.totalCents, summary.numTickets, summary.avgTicketCents) }
+        // ─── Tarjeta resumen general ───
         item {
-            Spacer(modifier = Modifier.height(28.dp))
-            SectionTitle("GASTO POR CATEGORÍA")
-        }
-        items(state.categories) { cat ->
-            CategoryRow(
-                categoryName = cat.category,
-                totalCents = cat.totalCents,
-                numItems = cat.numItems,
-                monthTotalCents = summary.totalCents,
-                onClick = { onCategoryClick(cat.category) }
+            TotalPanel(
+                totalCents = totalAll,
+                numTickets = numAll,
+                avgCents = if (totalAll > 0 && numAll > 0) totalAll / numAll else 0L
             )
         }
-        item { Spacer(modifier = Modifier.height(32.dp)) }
-        item { SectionTitle("TOP 5 PRODUCTOS") }
-        items(state.topProducts) { p ->
-            TopProductRow(p.name, p.veces, p.totalCents)
+
+        // ─── Bloque SUPERMERCADO ───
+        if (grocery != null && grocery.numTickets > 0) {
+            item {
+                Spacer(modifier = Modifier.height(28.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "SUPERMERCADO  ·  ${formatCents(totalGrocery)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MistMuted,
+                        letterSpacing = 2.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "GASTO",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MistMuted,
+                        letterSpacing = 2.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(MistMuted.copy(alpha = 0.3f))
+                )
+            }
+            items(state.categories) { cat ->
+                CategoryRow(
+                    categoryName = cat.category,
+                    totalCents = cat.totalCents,
+                    numItems = cat.numItems,
+                    monthTotalCents = totalGrocery,
+                    onClick = { onCategoryClick(cat.category) }
+                )
+            }
         }
+
+        // ─── Bloque GASTOS GENERALES ───
+        if (general != null && general.numMovements > 0) {
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "GASTOS GENERALES  ·  ${formatCents(totalGeneral)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MistMuted,
+                        letterSpacing = 2.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "GASTO",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MistMuted,
+                        letterSpacing = 2.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(MistMuted.copy(alpha = 0.3f))
+                )
+            }
+            items(state.expenseCategories) { cat ->
+                ExpenseCategoryRow(
+                    categoryName = cat.category,
+                    totalCents = cat.totalCents,
+                    numMovements = cat.numMovements,
+                    monthTotalCents = totalGeneral,
+                    onClick = { onExpenseCategoryClick(cat.category) }
+                )
+            }
+        }
+
         item { Spacer(modifier = Modifier.height(16.dp)) }
     }
 }
 
 @Composable
-private fun ColumnScope.GeneralContent(state: AnalysisUiState, onExpenseCategoryClick: (String) -> Unit) {
-    val summary = state.generalSummary
-    if (summary == null || summary.numMovements == 0) {
-        Text(
-            text = "No hay movimientos bancarios en este mes.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MistMuted
-        )
-        return
-    }
-    LazyColumn(
-        modifier = Modifier.fillMaxWidth().weight(1f),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
-    ) {
-        item {
-            GeneralTotalPanel(
-                totalCents = summary.totalCents,
-                numMovements = summary.numMovements,
-                avgMovementCents = summary.avgMovementCents
-            )
-        }
-        item {
-            Spacer(modifier = Modifier.height(28.dp))
-            SectionTitle("GASTO POR CATEGORÍA")
-        }
-        items(state.expenseCategories) { cat ->
-            ExpenseCategoryRow(
-                categoryName = cat.category,
-                totalCents = cat.totalCents,
-                numMovements = cat.numMovements,
-                monthTotalCents = summary.totalCents,
-                onClick = { onExpenseCategoryClick(cat.category) }
-            )
-        }
-        item { Spacer(modifier = Modifier.height(32.dp)) }
-        item { SectionTitle("TOP 5 MOVIMIENTOS") }
-        items(state.topMovements) { m ->
-            MovementRow(m.concept, m.date, m.amountCents)
-        }
-        item { Spacer(modifier = Modifier.height(16.dp)) }
-    }
-}
-
-@Composable
-private fun ColumnScope.BalanceContent(
+private fun ColumnScope.SummaryContent(
     state: AnalysisUiState,
     onCloseMonth: () -> Unit,
     onReopenMonth: () -> Unit,
@@ -611,85 +647,7 @@ private fun ColumnScope.BalanceContent(
     }
 }
 
-@Composable
-private fun ColumnScope.AllContent(
-    state: AnalysisUiState,
-    onCategoryClick: (String) -> Unit,
-    onExpenseCategoryClick: (String) -> Unit
-) {
-    val grocery = state.summary
-    val general = state.generalSummary
-    val totalGrocery = grocery?.totalCents ?: 0L
-    val totalGeneral = general?.totalCents ?: 0L
-    val totalAll = totalGrocery + totalGeneral
 
-    LazyColumn(
-        modifier = Modifier.fillMaxWidth().weight(1f),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
-    ) {
-        // ─── Total combinado ───
-        item {
-            TotalPanel(
-                totalCents = totalAll,
-                numTickets = (grocery?.numTickets ?: 0) + (general?.numMovements ?: 0),
-                avgCents = if (totalAll > 0 && ((grocery?.numTickets ?: 0) + (general?.numMovements ?: 0)) > 0) {
-                    totalAll / ((grocery?.numTickets ?: 0) + (general?.numMovements ?: 0))
-                } else 0L
-            )
-        }
-
-        // ─── Bloque supermercado ───
-        if (grocery != null && grocery.numTickets > 0) {
-            item {
-                Spacer(modifier = Modifier.height(28.dp))
-                SectionTitle("SUPERMERCADO  ·  ${String.format(Locale.getDefault(), "%.2f€", totalGrocery / 100.0)}")
-            }
-            items(state.categories) { cat ->
-                CategoryRow(
-                    categoryName = cat.category,
-                    totalCents = cat.totalCents,
-                    numItems = cat.numItems,
-                    monthTotalCents = totalGrocery,
-                    onClick = { onCategoryClick(cat.category) }
-                )
-            }
-        }
-
-        // ─── Bloque gastos generales ───
-        if (general != null && general.numMovements > 0) {
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-                SectionTitle("GASTOS GENERALES  ·  ${String.format(Locale.getDefault(), "%.2f€", totalGeneral / 100.0)}")
-            }
-            items(state.expenseCategories) { cat ->
-                ExpenseCategoryRow(
-                    categoryName = cat.category,
-                    totalCents = cat.totalCents,
-                    numMovements = cat.numMovements,
-                    monthTotalCents = totalGeneral,
-                    onClick = { onExpenseCategoryClick(cat.category) }
-                )
-            }
-        }
-
-        // ─── Bloque ingresos ───
-        val totalIncome = state.incomeDetails.sumOf { it.amountCents }
-        if (totalIncome > 0) {
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-                SectionTitle(
-                    title = "INGRESOS  ·  + ${formatCents(totalIncome)}",
-                    rightText = "IMPORTE"
-                )
-            }
-            items(state.incomeDetails) { income ->
-                IncomeRow(income.concept, income.date, income.amountCents, income.notes)
-            }
-        }
-
-        item { Spacer(modifier = Modifier.height(16.dp)) }
-    }
-}
 
 // ─────────────────────────────────────────────
 // Panel del total (el protagonista de la pantalla)

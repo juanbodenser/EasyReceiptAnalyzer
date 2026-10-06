@@ -63,6 +63,7 @@ import com.easyreceiptanalyzer.data.ProductCategory
 import com.easyreceiptanalyzer.ui.addreceipt.AddReceiptViewModel
 import com.easyreceiptanalyzer.ui.analysis.AnalysisScreen
 import com.easyreceiptanalyzer.ui.bankimport.BankImportScreen
+import com.easyreceiptanalyzer.ui.documents.DocumentsScreen
 import com.easyreceiptanalyzer.ui.history.HistoryScreen
 import com.easyreceiptanalyzer.ui.history.ReceiptDetailScreen
 import com.easyreceiptanalyzer.ui.home.HomeViewModel
@@ -101,6 +102,7 @@ sealed class AppScreen {
     data object Analysis : AppScreen()
     data object ManualReceipt : AppScreen()
     data object BankImport : AppScreen()
+    data object Documents : AppScreen()
     data class ReceiptDetail(val receiptId: Long) : AppScreen()
 }
 
@@ -129,6 +131,7 @@ fun EasyReceiptAnalyzerApp() {
             is AppScreen.Analysis -> AppScreen.Home
             is AppScreen.ManualReceipt -> AppScreen.AddReceipt
             is AppScreen.BankImport -> AppScreen.AddReceipt
+            is AppScreen.Documents -> AppScreen.Home
             is AppScreen.ReceiptDetail -> AppScreen.History
             is AppScreen.Home -> AppScreen.Home
         }
@@ -140,7 +143,8 @@ fun EasyReceiptAnalyzerApp() {
                 modifier = Modifier.padding(innerPadding),
                 onAddReceiptClick = { currentScreen = AppScreen.AddReceipt },
                 onHistoryClick = { currentScreen = AppScreen.History },
-                onAnalysisClick = { currentScreen = AppScreen.Analysis }
+                onAnalysisClick = { currentScreen = AppScreen.Analysis },
+                onDocumentsClick = { currentScreen = AppScreen.Documents }
             )
 
             is AppScreen.AddReceipt -> AddReceiptScreen(
@@ -157,6 +161,10 @@ fun EasyReceiptAnalyzerApp() {
             )
 
             is AppScreen.Analysis -> AnalysisScreen(
+                onBackClick = { currentScreen = AppScreen.Home }
+            )
+
+            is AppScreen.Documents -> DocumentsScreen(
                 onBackClick = { currentScreen = AppScreen.Home }
             )
 
@@ -184,6 +192,7 @@ fun HomeScreen(
     onAddReceiptClick: () -> Unit,
     onHistoryClick: () -> Unit,
     onAnalysisClick: () -> Unit,
+    onDocumentsClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     Column(
@@ -321,6 +330,14 @@ fun HomeScreen(
             subtitle = "Métricas y control mensual",
             accent = Warning,
             onClick = onAnalysisClick
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        CommandCard(
+            index = "04",
+            title = "DOCUMENTOS",
+            subtitle = "Escanear y guardar PDFs",
+            accent = AccentCyan,
+            onClick = onDocumentsClick
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -1016,7 +1033,8 @@ fun HomeScreenPreview() {
         HomeScreen(
             onAddReceiptClick = {},
             onHistoryClick = {},
-            onAnalysisClick = {}
+            onAnalysisClick = {},
+            onDocumentsClick = {}
         )
     }
 }
